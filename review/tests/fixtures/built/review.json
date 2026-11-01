@@ -1,0 +1,66 @@
+{
+  "tutor": "built",
+  "title": "Built Tutor",
+  "stop": 1,
+  "overview": {
+    "summary": "A two-module test tutor, built."
+  },
+  "modules": [
+    {
+      "n": 1,
+      "title": "First module",
+      "tools": [
+        {
+          "name": "double",
+          "source": "new",
+          "does": "Doubles a number.",
+          "inputs": "x",
+          "returns": "2x",
+          "tests": "test_double",
+          "code": [
+            {
+              "lines": "3-5",
+              "note": "The tool itself."
+            },
+            {
+              "lines": "90-95",
+              "note": "Past the end."
+            }
+          ],
+          "mistakes": [
+            {
+              "did": "Added instead of multiplied",
+              "ask": "What does doubling mean?"
+            }
+          ]
+        },
+        {
+          "name": "ghost",
+          "source": "new",
+          "file": "missing.py",
+          "code": [
+            {
+              "lines": "1-2",
+              "note": "No such file."
+            }
+          ]
+        }
+      ],
+      "plots": [
+        {
+          "name": "line",
+          "shows": "A line.",
+          "preview": {
+            "plot": "line",
+            "slope": 2
+          }
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Second module"
+    }
+  ],
+  "notes": ""
+}

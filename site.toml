@@ -1,0 +1,12 @@
+# Your site.  scripts/deploy.sh and scripts/deploy-home.sh read this file.
+[site]
+domain = "tutors.example.edu"       # the sign-in and landing page; each tutor is <name>.<domain>
+email_domain = "example.edu"        # only these addresses can make accounts; "" allows any
+mail_from = "Tutors <noreply@example.edu>"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_user = "apikey"
+model = "claude-sonnet-5-5"
+effort = "medium"
+elevenlabs = false                  # true: ElevenLabs speaks, using the secret elevenlabs-api-key
+anthropic_base_url = ""             # set this when calling Claude through a gateway

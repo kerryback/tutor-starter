@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutors: Your account</title>
+<link rel="stylesheet" href="/static/home.css">
+</head>
+<body class="aerial">
+<div class="card" id="gone" hidden>
+  <h1>Link expired</h1>
+  <p id="gonemsg"></p>
+  <a class="link" id="again" href="/email?kind=forgot">Ask for a new link</a>
+  <a class="link" id="back1" href="/">Return to Login</a>
+</div>
+
+<form class="card" id="create" hidden>
+  <h1>Create an Account</h1>
+  <p>Choose a username and a 4-digit passcode.</p>
+  <label for="cuser">Username</label>
+  <input id="cuser" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+  <label for="ccode">4-digit passcode</label>
+  <input id="ccode" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required>
+  <label for="ccode2">Passcode again</label>
+  <input id="ccode2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" required>
+  <button class="primary" type="submit">Create account</button>
+  <div class="msg" id="cmsg"></div>
+  <a class="link back" href="/">Return to Login</a>
+</form>
+
+<form class="card" id="reset" hidden>
+  <h1>Reset</h1>
+  <p>Your username is <b id="rname"></b>. Change your username, your passcode, or both.</p>
+  <h2>Reset username</h2>
+  <label for="ruser">New username</label>
+  <input id="ruser" autocomplete="username" autocapitalize="none" spellcheck="false">
+  <h2>Reset passcode</h2>
+  <label for="rcode">New 4-digit passcode</label>
+  <input id="rcode" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password">
+  <label for="rcode2">Passcode again</label>
+  <input id="rcode2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password">
+  <button class="primary" type="submit">Save</button>
+  <div class="msg" id="rmsg"></div>
+  <a class="link back" href="/">Return to Login</a>
+</form>
+
+<div class="card" id="done" hidden>
+  <h1 id="donetitle">Your account is ready.</h1>
+  <p id="donemsg"></p>
+  <button class="primary" type="button" id="tologin">Return to Login</button>
+</div>
+
+<script src="/static/home.js"></script>
+<script>
+const token = params.get('t') || '';
+for (const a of document.querySelectorAll('#back1, .back')) a.href = withNext('/');
+$('again').href = withNext('/email?kind=forgot');
+$('tologin').addEventListener('click', () => { location = withNext('/'); });
+
+function show(id) { for (const c of ['gone', 'create', 'reset', 'done']) $(c).hidden = c !== id; }
+function finished(title, text) { $('donetitle').textContent = title; $('donemsg').textContent = text; show('done'); }
+
+onSubmit('create', 'cmsg', async () => {
+  const r = await api('/api/finish', {token, username: $('cuser').value.trim(),
+    code: $('ccode').value.trim(), code2: $('ccode2').value.trim()});
+  finished('Your account is ready.', 'Sign in as ' + r.username + ' with your passcode.');
+});
+onSubmit('reset', 'rmsg', async () => {
+  const u = $('ruser').value.trim(), c = $('rcode').value.trim(), c2 = $('rcode2').value.trim();
+  const r = await api('/api/finish', {token, username: u || null, code: c || c2 ? c : null, code2: c2});
+  finished('Saved.', 'Your username is ' + r.username + '.');
+});
+
+api('/api/link?t=' + encodeURIComponent(token)).then(info => {
+  if (info.kind === 'reset') { $('rname').textContent = info.username; show('reset'); $('ruser').focus(); }
+  else { show('create'); $('cuser').focus(); }
+}).catch(err => { $('gonemsg').textContent = err.message; show('gone'); });
+</script>
+</body>
+</html>

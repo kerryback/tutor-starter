@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutor Review</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* The voiceover app's look (its Tailwind theme, written out), so the two can merge. */
+:root{--navy:#0f172a;--ink:#334155;--mute:#64748b;--line:#e2e8f0;--bg:#f8fafc;--card:#fff;--brand:#2452d6;--brand-dark:#1d43ad;--brand-tint:#eef4ff;--brand-line:#bfd3fe;
+  --ok:#15803d;--ok-tint:#dcfce7;--warn:#b45309;--warn-tint:#fef3c7;--note:#fffbeb;--note-line:#fde68a;--err:#dc2626;--hdr:56px}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.55 Inter,system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+header{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;border-bottom:1px solid rgba(15,23,42,.4)}
+.hin{max-width:1600px;margin:0 auto;padding:10px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:15px}
+.brand b{display:block;font-size:14px;font-weight:800;letter-spacing:-.01em;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:block;font-size:11px;color:rgba(255,255,255,.6)}
+.pick{display:flex;align-items:center;gap:4px}
+select.view{font:inherit;font-size:13px;font-weight:600;color:var(--navy);background:#fff;border:0;border-radius:8px;padding:6px 10px;max-width:min(460px,70vw);cursor:pointer}
+.right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.msg{font-size:12px;color:rgba(255,255,255,.7)} .msg.err{color:#fca5a5} .msg.ok{color:#86efac}
+button{font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;transition:background .15s}
+button:hover{background:#f8fafc} button:disabled{opacity:.5;cursor:not-allowed}
+button.pri{background:var(--brand);border-color:var(--brand);color:#fff} button.pri:hover{background:var(--brand-dark)}
+button.dark{background:transparent;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.85)} button.dark:hover{background:rgba(255,255,255,.1)}
+button.x{padding:2px 8px;color:var(--mute);font-weight:400}
+.pill{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#475569;vertical-align:middle}
+.pill.reviewed{background:var(--ok-tint);color:var(--ok)} .pill.edited{background:var(--warn-tint);color:var(--warn)}
+main{max-width:1600px;margin:0 auto;padding:20px}
+.head{display:flex;align-items:center;gap:10px;margin:0 0 4px}
+h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--navy)}
+.sub{color:var(--mute);margin:0 0 16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.stick{position:sticky;top:calc(var(--hdr) + 16px);max-height:calc(100vh - var(--hdr) - 32px);overflow:auto}
+.flow{columns:2 520px;column-gap:16px} .flow section{break-inside:avoid}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04)}
+section h3{margin:0 0 2px;font-size:14px;font-weight:700;color:var(--navy)}
+.why{font-size:12.5px;color:var(--mute);margin:0 0 10px}
+.notes{background:var(--note);border-color:var(--note-line)}
+textarea,input[type=text]{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink)}
+textarea:focus,input[type=text]:focus{outline:none;border-color:#3b6ef2;box-shadow:0 0 0 3px rgba(59,110,242,.2)}
+textarea{resize:vertical;overflow:hidden} textarea.spoken{font:15px/1.6 Georgia,serif} p.added{font:15px/1.6 Georgia,serif;margin:4px 0}
+.row{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:13px;flex-wrap:wrap}
+.warn{color:var(--warn);font-size:13px;margin:4px 0 0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;color:var(--mute);font-weight:600}
+td textarea.cell{padding:4px 6px;font-size:13px;resize:none}
+.item{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.item h4{margin:0 0 4px;font-size:13.5px;font-weight:700;color:var(--navy)}
+.item h4.code{font-family:Menlo,monospace;font-size:13px;font-weight:600}
+.item p{margin:0 0 6px}
+.mono{font:12px/1.5 Menlo,monospace;color:var(--mute);overflow-wrap:anywhere}
+.tag{display:inline-block;font:400 11px Inter,sans-serif;padding:1px 7px;border-radius:9px;background:#e8f2ec;color:var(--ok);margin-left:6px}
+.tag.new{background:var(--brand-tint);color:var(--brand-dark)}
+dl{display:grid;grid-template-columns:130px 1fr;gap:4px 12px;margin:6px 0;font-size:13px} dt{color:var(--mute)} dd{margin:0}
+details{margin-top:8px} summary{cursor:pointer;font-size:12.5px;color:var(--brand)}
+.code{display:grid;grid-template-columns:3fr 2fr;margin-top:8px;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12.5px}
+.code pre{margin:0;padding:8px 10px;background:#f3f4f7;font:12px/1.5 Menlo,monospace;border-bottom:1px solid var(--line);white-space:pre-wrap;overflow-x:auto}
+.code p{margin:0;padding:8px 10px;border-bottom:1px solid var(--line);background:#fff}
+.code .missing{color:var(--err);font-family:inherit;font-size:12.5px}
+h4.concept{margin:14px 0 2px;font-size:13px;color:var(--navy)}
+table.scripts{table-layout:fixed} table.scripts th:nth-child(1){width:38%} table.scripts th:nth-child(2){width:24%}
+td.mono{font-size:12px}
+.sliders{display:grid;gap:6px;margin-top:8px;font-size:13px} .slider{display:grid;grid-template-columns:9em 1fr 4.5em;align-items:center;gap:10px}
+.slider input{width:100%} .slider-value{font-variant-numeric:tabular-nums;text-align:right}
+.plot{min-height:0} .plot .wait{color:var(--mute);font-size:13px;padding:8px 0}
+.error{max-width:640px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px}
+pre.out{background:#f3f4f7;padding:10px;border-radius:8px;font:12px/1.5 Menlo,monospace;white-space:pre-wrap}
+@media (max-width:1100px){.grid2{grid-template-columns:minmax(0,1fr)} .stick{position:static;max-height:none;overflow:visible}}
+@media (max-width:760px){.code{grid-template-columns:1fr} .pick{width:100%} select.view{flex:1;min-width:0;max-width:none} section{overflow-x:auto} main{padding:16px} .hin{padding:10px 16px} .right{margin-left:0}}
+</style></head>
+<body>
+<header><div class="hin" id="bar"></div></header>
+<main id="main"></main>
+<script type="module">
+import { spokenWarnings, collectEdits, isDirty, testsMessage } from '/static/review-lib.js';
+
+const STOPS = ['reviewing the tutor', 'trying the tutor'];
+// The place on the page is in the URL (#m2), so a reload keeps it.
+let data, orig, cur, introsOrig, introsCur, view = location.hash.slice(1) || 'overview', message = ['', ''];
+let showScripts = false;   // the Python scripts stay hidden until asked for, on every module
+const figures = new Map(); // plots drawn since the page loaded, by "module:plot"
+
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const $ = (id) => document.getElementById(id);
+const editable = (d) => ({ notes: d.notes, intro_status: d.intro_status, modules: d.modules });
+
+// h('p', {class: 'why'}, 'text', child...): an element; text is always text, never HTML.
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+  return el;
+}
+
+const card = (title, why, ...kids) => h('section', {}, h('h3', {}, title), why ? h('p', { class: 'why' }, why) : null, ...kids);
+
+const introsDirty = () => JSON.stringify(introsOrig) !== JSON.stringify(introsCur);
+const courseDirty = () => introsCur && JSON.stringify(introsOrig.course) !== JSON.stringify(introsCur.course);
+const introDirty = (n) => introsCur && JSON.stringify(introsOrig.modules.find((m) => m.n === n)) !== JSON.stringify(introFor(n));
+const dirty = () => isDirty(orig, cur) || introsDirty();
+const introFor = (n) => introsCur && introsCur.modules.find((m) => m.n === n);
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok) {
+    let err = `The page could not reach the review app (${r.status}).`;
+    try { err = (await r.json()).error || err; } catch {}
+    throw new Error(err);
+  }
+  return r;
+}
+
+async function load() {
+  try {
+    data = await (await api('/api/data')).json();
+  } catch (e) {
+    document.body.replaceChildren(h('div', { class: 'error' }, h('h2', {}, 'The review page cannot open'), h('p', {}, e.message),
+      h('p', { class: 'why' }, 'Ask Claude to fix review.json, then reload this page.')));
+    return;
+  }
+  orig = editable(data);
+  cur = clone(orig);
+  introsOrig = data.intros; introsCur = clone(data.intros);
+  render();
+}
+
+function setMsg(text, kind = '') { message = [text, kind]; const m = document.querySelector('.msg'); if (m) { m.textContent = text; m.className = 'msg ' + kind; } }
+function touched() { renderBar(); setMsg('Unsaved changes.', ''); }
+
+// --- the frame ----------------------------------------------------------
+
+function render() {
+  document.title = `Review: ${data.title}`;
+  renderBar();
+  renderMain();
+}
+
+// Every place on the page, in the order of the dropdown, with its status.
+function places() {
+  const edited = collectEdits(orig, cur).modules;
+  const out = [{ id: 'overview', label: 'Overview and data' }];
+  if (introsCur && introsCur.course) out.push({ id: 'intro', label: 'Introduction', status: courseDirty() ? 'edited' : cur.intro_status });
+  for (const m of cur.modules)
+    out.push({ id: 'm' + m.n, label: `Module ${m.n}: ${m.title}`, status: edited[m.n] || introDirty(m.n) ? 'edited' : m.status });
+  out.push({ id: 'checks', label: 'Tests and evals', status: data.eval ? `${data.eval.passed}/${data.eval.total} evals passed` : '' });
+  return out;
+}
+
+function go(id) { view = id; history.replaceState(null, '', '#' + id); render(); window.scrollTo(0, 0); }
+
+function renderBar() {
+  const all = places();
+  const i = Math.max(0, all.findIndex((p) => p.id === view));
+  const select = h('select', { class: 'view', 'aria-label': 'Go to', onchange: (e) => go(e.target.value) },
+    ...all.map((p) => h('option', { value: p.id, selected: p.id === view }, p.status ? `${p.label}  ·  ${p.status}` : p.label)));
+  // Progress, not navigation: the stop is set by Claude, not by clicking.
+  const stop = `Stop ${data.stop} of 2: ${STOPS[data.stop - 1]}`;
+  $('bar').replaceChildren(
+    h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'T'), h('div', {}, h('b', {}, data.title), h('small', {}, stop))),
+    h('div', { class: 'pick' },
+      h('button', { class: 'dark', title: 'Previous', disabled: i === 0, onclick: () => go(all[i - 1].id) }, '‹'),
+      select,
+      h('button', { class: 'dark', title: 'Next', disabled: i === all.length - 1, onclick: () => go(all[i + 1].id) }, '›')),
+    h('div', { class: 'right' },
+      h('span', { class: 'msg ' + message[1] }, message[0] || `Save writes review.json${data.intros ? ' and content/module-intros.md' : ''}.`),
+      h('button', { class: 'dark', onclick: () => save() }, 'Save'),
+      markButton()));
+  document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
+}
+
+// "Mark reviewed" for the Introduction or a module; once reviewed, "Reopen".
+function markButton() {
+  const m = cur.modules.find((x) => 'm' + x.n === view);
+  if (!m && view !== 'intro') return null;
+  const reviewed = (m ? m.status : cur.intro_status) === 'reviewed';
+  const set = (s) => { if (m) m.status = s; else cur.intro_status = s; save(); };
+  return reviewed ? h('button', { class: 'dark', onclick: () => set('open') }, 'Reopen')
+    : h('button', { class: 'pri', onclick: () => set('reviewed') }, 'Mark reviewed');
+}
+
+function renderMain() {
+  let body;
+  if (view === 'overview') body = overview();
+  else if (view === 'intro' && introsCur && introsCur.course) body = introduction();
+  else if (view === 'checks') body = checks();
+  else {
+    const m = cur.modules.find((x) => 'm' + x.n === view) || cur.modules[0];
+    view = 'm' + m.n;
+    body = moduleView(m);
+  }
+  $('main').replaceChildren(...body);
+  document.querySelectorAll('main textarea').forEach(fit);
+}
+
+// A textarea grows to show all its text.
+function fit(box) { box.style.height = 'auto'; box.style.height = box.scrollHeight + 2 + 'px'; }
+document.addEventListener('input', (e) => { if (e.target.tagName === 'TEXTAREA') fit(e.target); });
+
+function head(title, status) {
+  return h('div', { class: 'head' }, h('h2', {}, title), status ? h('span', { class: 'pill ' + status }, status) : null);
+}
+
+// --- edit helpers -------------------------------------------------------
+
+function textBox(obj, key, rows = 3, cls = '', after) {
+  return h('textarea', { rows, class: cls, oninput: (e) => { obj[key] = e.target.value; touched(); if (after) after(e.target.value); } }, obj[key] || '');
+}
+
+// A list of strings edited as one textarea, one item per line.
+function linesBox(obj, key, rows = 4) {
+  return h('textarea', { rows, oninput: (e) => { obj[key] = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean); touched(); } },
+    (obj[key] || []).join('\n'));
+}
+
+// A table of objects with the given columns, each cell a text box that wraps, rows added and removed.
+function rowsTable(rows, cols, onChange) {
+  const table = h('table', {});
+  const draw = () => {
+    table.replaceChildren(h('tr', {}, ...cols.map(([, label]) => h('th', {}, label)), h('th', {})),
+      ...rows.map((r, i) => h('tr', {}, ...cols.map(([key]) => h('td', {}, h('textarea', { rows: 1, class: 'cell',
+        oninput: (e) => { r[key] = e.target.value.replace(/\n/g, ' '); onChange(); } }, r[key] || ''))),
+        h('td', {}, h('button', { class: 'x', title: 'Remove this row', onclick: () => { rows.splice(i, 1); onChange(); draw(); } }, '✕')))));
+    if (table.isConnected) table.querySelectorAll('textarea').forEach(fit);
+  };
+  draw();
+  return h('div', {}, table, h('div', { class: 'row' }, h('button', { onclick: () => { rows.push(Object.fromEntries(cols.map(([k]) => [k, '']))); onChange(); draw(); } }, '+ Add a row')));
+}
+
+// added: sentences the app speaks after the text (the Introduction's), shown and played but not edited here.
+function spokenBox(obj, added = []) {
+  const warn = h('div', {});
+  const show = (text) => warn.replaceChildren(...spokenWarnings(text).map((w) => h('p', { class: 'warn' }, '⚠ ' + w)));
+  show(obj.spoken || '');
+  const box = h('textarea', { rows: 4, class: 'spoken', oninput: (e) => { obj.spoken = e.target.value; touched(); show(e.target.value); } }, obj.spoken || '');
+  const tail = added.length ? [h('p', { class: 'why' }, 'Then the app always adds:'), h('p', { class: 'added' }, added.join(' '))] : [];
+  return [box, ...tail, warn, h('div', { class: 'row' }, h('button', { onclick: (e) => listen([obj.spoken, ...added].join(' '), e.target) }, '▶ Listen in the tutor\'s voice'))];
+}
+
+async function listen(text, button) {
+  const label = button.textContent; button.textContent = 'Loading the voice…'; button.disabled = true;
+  try {
+    const wav = await (await api('/api/listen', { method: 'POST', body: JSON.stringify({ text }) })).blob();
+    new Audio(URL.createObjectURL(wav)).play();
+  } catch (e) { setMsg(e.message, 'err'); }
+  button.textContent = label; button.disabled = false;
+}
+
+// --- the views ----------------------------------------------------------
+
+function overview() {
+  const o = data.overview;
+  const out = [];
+  const sc = o.scope || {};
+  if (sc.teaches || sc.nearby || sc.elsewhere) out.push(card('Scope',
+    'What the tutor answers. A nearby question gets a short answer, then the tutor returns to the lesson. Anything else it declines. Ask in the notes to change it.',
+    h('dl', {}, ...[['Teaches', sc.teaches], ['Nearby: a short answer', sc.nearby], ['Other tutors cover', sc.elsewhere]]
+      .filter(([, v]) => v).flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]))));
+  if (o.data.length) out.push(card('Data', 'Frozen in snapshot/, so every example and exercise has fixed answers. Live data appears only in the last module, if there is one.',
+    h('table', {}, h('tr', {}, ...['Name', 'What it is', 'Source', 'Range'].map((t) => h('th', {}, t))),
+      ...o.data.map((d) => h('tr', {}, h('td', {}, d.name), h('td', {}, d.what || ''), h('td', {}, d.source || ''), h('td', {}, d.range || ''))))));
+  if (o.sources.length) out.push(card('Sources', 'What Claude read to build the tutor.', o.sources.some((s) => s.used_for)
+    ? h('table', {}, h('tr', {}, h('th', {}, 'File'), h('th', {}, 'Used for')), ...o.sources.map((s) => h('tr', {}, h('td', {}, s.path), h('td', {}, s.used_for || ''))))
+    : h('table', {}, ...o.sources.map((s) => h('tr', {}, h('td', {}, s.path))))));
+  if (o.left_out.length) out.push(card('Left out', 'In the sources but not in the tutor.',
+    h('table', {}, h('tr', {}, h('th', {}, 'What'), h('th', {}, 'Why')), ...o.left_out.map((l) => h('tr', {}, h('td', {}, l.what), h('td', {}, l.why || ''))))));
+  if (o.packages.length) out.push(card('New packages', 'Installed for this tutor only, from its requirements.txt.', h('p', {}, o.packages.join(', '))));
+  out.push(h('section', { class: 'notes' }, h('h3', {}, 'Notes for Claude about the whole tutor'),
+    h('p', { class: 'why' }, 'Anything you would rather ask for than edit, including a change to the modules: their order, splitting or merging them, or a new one. Claude reads these when you say you are done reviewing.'),
+    textBox(cur, 'notes', 4)));
+  return [head('Overview and data'), h('p', { class: 'sub' }, o.summary || ''), h('div', { class: 'flow' }, ...out)];
+}
+
+function introduction() {
+  const c = introsCur.course;
+  return [head('Introduction', courseDirty() ? 'edited' : cur.intro_status),
+    h('p', { class: 'sub' }, 'Played once, at the start of a new student\'s first session.'),
+    h('div', { class: 'grid2' },
+      h('div', { class: 'stick' }, card('Spoken', 'Read aloud word for word. Write numbers in words. End with the sentence on talking or typing an answer. The app adds the no-arithmetic note and the microphone request after it, shown below the box; Listen plays all of it.', ...spokenBox(c, data.intro_added || []))),
+      h('div', {}, card('On the board', 'Shown while the introduction plays. One line per item. Digits are fine here.', linesBox(c, 'board', 4))))];
+}
+
+function moduleView(m) {
+  const intro = introFor(m.n);
+  const left = intro ? [
+    card('Spoken intro', 'The tutor reads this aloud, word for word, every time the module starts. Write numbers in words.', ...spokenBox(intro)),
+    card('On the board', 'Shown while the intro plays. One line per item. Digits are fine here.', linesBox(intro, 'board', 3)),
+    card('Learning objectives', 'Shown to the student, and the tutor\'s targets. One per line.', linesBox(intro, 'objectives', 3)),
+  ] : [card('Spoken intro', null, h('p', { class: 'warn' }, `⚠ content/module-intros.md has no Module ${m.n}. Ask Claude to add it.`))];
+
+  const right = [];
+  if (m.plots.length) right.push(card('Plots', 'Drawn by the tutor\'s code, as the student sees them on the board.', ...m.plots.map((p, i) => plotItem(m, p, i))));
+  right.push(card('Examples and exercises', 'Each uses the frozen data, so the answers never change.',
+    rowsTable(m.examples, [['label', 'Which'], ['data', 'Data'], ['asks', 'Asks the student for'], ['answer', 'Answer (from the tools)']], touched)));
+  const graded = m.tools.filter((t) => t.mistakes.length);
+  if (graded.length) right.push(card('Known mistakes', 'What a student did, and the question the tutor asks. Claude puts your changes into the grading code.',
+    ...graded.map((t) => h('div', { class: 'item' }, h('h4', {}, t.does || t.name), rowsTable(t.mistakes, [['did', 'They did'], ['ask', 'The tutor asks']], touched)))));
+  right.push(h('section', { class: 'notes' }, h('h3', {}, 'Notes for Claude'),
+    h('p', { class: 'why' }, 'Anything you would rather ask for than edit yourself. Claude reads these when you say you are done reviewing.'), textBox(m, 'notes', 3)));
+  if (m.concepts.length || m.tools.length) right.push(scripts(m));
+
+  return [head(`Module ${m.n}: ${m.title}`, introDirty(m.n) || collectEdits(orig, cur).modules[m.n] ? 'edited' : m.status),
+    h('div', { class: 'grid2', style: 'margin-top:12px' }, h('div', { class: 'stick' }, ...left), h('div', {}, ...right))];
+}
+
+// The Python behind the module: which script computes what, and each tool's code explained.
+function scripts(m) {
+  const label = () => showScripts ? 'Hide the scripts' : 'Show the scripts';
+  const body = h('div', { hidden: !showScripts },
+    ...m.concepts.flatMap((c) => [h('h4', { class: 'concept' }, c.name),
+      h('table', { class: 'scripts' }, h('tr', {}, ...['Calculated or plotted', 'Script in the tutor', 'Where the code comes from'].map((t) => h('th', {}, t))),
+        ...c.scripts.map((r) => h('tr', {}, h('td', {}, r.computes), h('td', { class: 'mono' }, r.script),
+          h('td', {}, /^new$/i.test(r.origin.trim()) ? 'New code, written for this tutor' : r.origin.replace(/^new\b/, 'New')))))]),
+    m.tools.length ? h('h4', { class: 'concept' }, 'Tools') : null, ...m.tools.map(tool));
+  const button = h('button', { onclick: () => { showScripts = !showScripts; body.hidden = !showScripts; button.textContent = label(); } }, label());
+  return card('The Python scripts', 'Every number and plot the tutor shows comes from a script, never from the model.', h('div', { class: 'row' }, button), body);
+}
+
+function tool(t) {
+  const fromYou = t.source && !/^new\b/i.test(t.source);
+  const rows = [['What it does', t.does], ['The tutor gives it', t.inputs], ['It gives back', t.returns],
+    ['Where it comes from', fromYou ? t.source : 'New code, written for this tutor'], ['Checked by', t.tests]].filter(([, v]) => v);
+  const el = h('div', { class: 'item' }, h('h4', { class: 'code' }, t.name, h('span', { class: 'tag ' + (fromYou ? '' : 'new') }, fromYou ? 'from your code' : 'new')),
+    h('dl', {}, ...rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])));
+  if (t.blocks && t.blocks.length) el.append(h('details', {}, h('summary', {}, `Show the code, explained (${t.file})`),
+    h('div', { class: 'code' }, ...t.blocks.flatMap((b) => [b.missing ? h('pre', { class: 'missing' }, `These lines are not in ${t.file}.`) : h('pre', {}, b.code), h('p', {}, b.note)]))));
+  return el;
+}
+
+// Each plot is drawn as soon as its module opens.
+function plotItem(m, p, i) {
+  const box = h('div', { class: 'plot' });
+  if (!data.has_tutor) box.append(h('p', { class: 'warn' }, '⚠ The plot is drawn once the tutor is built.'));
+  else if (!p.preview) box.append(h('p', { class: 'warn' }, '⚠ This plot has no preview settings yet. Ask Claude to add them.'));
+  else draw(m.n, i, box);
+  return h('div', { class: 'item' }, h('h4', {}, p.name), p.shows ? h('p', {}, p.shows) : null, box);
+}
+
+const PLOTLY = 'https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly-basic.min.js';
+let plotly = null;
+function loadPlotly() {
+  if (!plotly) plotly = new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = PLOTLY;
+    s.onload = () => resolve(window.Plotly); s.onerror = () => { plotly = null; reject(new Error('Could not load the plotting library.')); };
+    document.head.append(s);
+  });
+  return plotly;
+}
+
+// A figure is fetched once per page load: saving or coming back to a module redraws it
+// without asking topic.py again. Reload the page to see a change to the plot code.
+async function draw(n, i, box) {
+  const key = `${n}:${i}`;
+  box.replaceChildren(h('p', { class: 'wait' }, 'Drawing the plot…'));
+  try {
+    if (!figures.has(key)) figures.set(key, (await api('/api/plot', { method: 'POST', body: JSON.stringify({ module: n, plot: i }) })).json());
+    const fig = await figures.get(key);
+    const P = await loadPlotly();
+    box.style.minHeight = '360px';
+    const area = h('div', {});
+    box.replaceChildren(area);
+    await P.newPlot(area, clone(fig.data), clone(fig.layout), { responsive: true, displayModeBar: false });
+    if (fig.sliders) (await import('/engine/plot-sliders.js')).addSliders(box, area, fig, fig.layout, P);
+  } catch (e) { figures.delete(key); box.replaceChildren(h('p', { class: 'warn' }, '⚠ ' + e.message)); }
+}
+
+function checks() {
+  const out = h('pre', { class: 'out', hidden: true });
+  const ev = data.eval;
+  return [head('Tests and evals'), h('p', { class: 'sub' }, 'Tests check the tools\' numbers against your code. Evals play typical students against the real model.'),
+    h('div', { class: 'grid2' },
+      card('Tests', 'Free, and take about a minute.',
+        h('div', { class: 'row' }, h('button', { onclick: async (e) => {
+          e.target.disabled = true; e.target.textContent = 'Running…';
+          try { const r = await (await api('/api/tests', { method: 'POST' })).json(); out.textContent = testsMessage(r.ok, r.summary) + '\n\n' + r.summary; }
+          catch (err) { out.textContent = err.message; }
+          out.hidden = false; e.target.disabled = false; e.target.textContent = 'Run the tests again';
+        } }, 'Run the tests')), out),
+      card('Evals', null, h('p', {}, ev ? `${ev.passed} of ${ev.total} checks passed in ${ev.file}.` : 'Not run yet. Ask Claude to run the evals (about $0.50 a run).')))];
+}
+
+// --- saving -------------------------------------------------------------
+
+async function save() {
+  setMsg('Saving…');
+  try {
+    data = await (await api('/api/save', { method: 'PUT', body: JSON.stringify({ version: data.version, edits: collectEdits(orig, cur), intros: introsDirty() ? introsCur : null }) })).json();
+  } catch (e) { setMsg(e.message, 'err'); return; }
+  orig = editable(data); cur = clone(orig);
+  introsOrig = data.intros; introsCur = clone(data.intros);
+  message = ['Saved.', 'ok'];
+  render();
+}
+
+window.addEventListener('beforeunload', (e) => { if (data && dirty()) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('resize', () => {
+  document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
+  document.querySelectorAll('main textarea').forEach(fit);
+});
+load();
+</script>
+</body></html>

@@ -1,0 +1,30 @@
+{
+  "tutor": "unbuilt",
+  "title": "Unbuilt Tutor",
+  "stop": 1,
+  "overview": {
+    "summary": "A two-module test tutor, not built yet.",
+    "sources": [{"path": "slides.qmd", "used_for": "module order"}],
+    "data": [{"name": "SPY", "what": "US stocks", "source": "Yahoo", "range": "2006-01 to 2025-12"}],
+    "packages": [],
+    "left_out": []
+  },
+  "modules": [
+    {
+      "n": 1,
+      "title": "First module",
+      "teaches": "The first idea.",
+      "objectives": ["State the first idea."],
+      "concepts": [{"name": "The first idea", "scripts": [{"computes": "The first number", "script": "topic.py: first_tool"}]}],
+      "tools": [{"name": "first_tool", "source": "new", "does": "Computes the first thing."}]
+    },
+    {
+      "n": 2,
+      "title": "Second module",
+      "teaches": "The second idea.",
+      "why": "It builds on the first.",
+      "examples": [{"label": "Worked example", "data": "SPY", "asks": "The mean", "answer": ""}]
+    }
+  ],
+  "notes": ""
+}

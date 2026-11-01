@@ -1,0 +1,9 @@
+# The landing page's tutors, in order.  subtitle matches the tutor's tutor.toml;
+# image is a file in static/.  Each tutor's address is <name>.<domain>, with the
+# domain from site.toml.
+
+[[tutor]]
+name = "binomial"
+title = "Binomial model for option pricing"
+subtitle = "Binomial option pricing"
+image = "tree.svg"

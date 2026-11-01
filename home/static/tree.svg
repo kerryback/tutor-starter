@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="100" viewBox="0 0 150 100">
+  <!-- Binomial: a two-period tree -->
+  <g stroke="#00205B" stroke-width="1.5">
+    <line x1="22" y1="50" x2="75" y2="25"/><line x1="22" y1="50" x2="75" y2="75"/>
+    <line x1="75" y1="25" x2="128" y2="10"/><line x1="75" y1="25" x2="128" y2="50"/>
+    <line x1="75" y1="75" x2="128" y2="50"/><line x1="75" y1="75" x2="128" y2="90"/>
+  </g>
+  <g fill="#fff" stroke="#00205B" stroke-width="1.5">
+    <circle cx="22" cy="50" r="6"/><circle cx="75" cy="25" r="6"/><circle cx="75" cy="75" r="6"/>
+    <circle cx="128" cy="10" r="6"/><circle cx="128" cy="50" r="6"/><circle cx="128" cy="90" r="6"/>
+  </g>
+</svg>

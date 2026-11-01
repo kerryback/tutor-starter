@@ -1,0 +1,69 @@
+/* tutors.example.edu.  Colors and type follow the tutors' page (engine/static/index.html). */
+:root {
+  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d232b; --muted: #66707c;
+  --line: #d9dde2; --accent: #00205B; --accent-ink: #ffffff; --err: #b4532a; --ok: #2e7d4f;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #15181c; --panel: #1e2328; --ink: #e6e9ec; --muted: #9aa4af;
+    --line: #353c44; --accent: #6f9fd0; --accent-ink: #0d1116; --err: #e08a62; --ok: #6cc191; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--ink);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); }
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); padding: 6px 12px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+input { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+
+/* The sign-in pages: a dark background behind a card */
+body.aerial { min-height: 100vh; padding: 12vh 16px 32px;
+  background: linear-gradient(#0b2a55, #27466f) fixed; }
+.card { margin: 0 auto; width: min(380px, 100%); background: var(--panel); border-radius: 12px;
+  padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.30); }
+.card h1 { margin: 0 0 4px; font-size: 20px; color: var(--accent); }
+.card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.card label { display: block; font-size: 14px; margin: 12px 0 4px; }
+.card button { margin-top: 16px; width: 100%; }
+.card .link { display: block; text-align: center; margin-top: 12px; font-size: 14px; }
+.card .new { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px;
+  text-align: center; font-size: 14px; color: var(--muted); }
+.card .new button { margin-top: 8px; }
+.card h2 { font-size: 15px; margin: 18px 0 0; }
+.msg { font-size: 14px; min-height: 20px; margin-top: 10px; color: var(--err); }
+.msg.ok { color: var(--ok); }
+
+/* The landing page */
+.who { display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+  padding: 12px 16px 0; color: var(--muted); font-size: 14px; }
+.landing { max-width: 760px; margin: 0 auto; padding: 24px 16px 32px; }
+/* An optional picture at the top of the landing page */
+.landing .hero { display: block; width: 50vw; max-width: 100%; height: auto; margin: 0 auto 20px; border-radius: 10px; }
+.landing h1 { font: 600 30px Georgia, "Times New Roman", serif; color: var(--accent);
+  text-align: center; margin: 0 0 4px; }
+.landing .sub { text-align: center; color: var(--muted); margin: 0 0 28px; }
+.tutor { display: flex; align-items: center; gap: 22px; padding: 16px 0; border-top: 1px solid var(--line); }
+.tutor:last-child { border-bottom: 1px solid var(--line); }
+.thumb { flex: 0 0 170px; height: 120px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; }
+.thumb img { width: 150px; height: 100px; }
+.tutor a { font: 600 20px Georgia, "Times New Roman", serif; text-decoration: none; }
+.tutor a:hover { text-decoration: underline; }
+.tutor .d { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.footer { text-align: center; padding: 32px 0 8px; }
+/* The image has a white background: multiply lets the page color through */
+.footer img { width: 420px; max-width: 100%; height: auto; mix-blend-mode: multiply; }
+@media (prefers-color-scheme: dark) {
+  .footer img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+}
+@media (max-width: 520px) {
+  .landing .hero { width: 100%; }
+  .tutor { gap: 14px; }
+  .thumb { flex-basis: 110px; height: 80px; }
+  .thumb img { width: 100px; height: 67px; }
+  .tutor a { font-size: 18px; }
+}

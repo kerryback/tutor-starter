@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutors</title>
+<link rel="stylesheet" href="/static/home.css">
+</head>
+<body>
+<div class="who"><span id="me"></span><button type="button" id="signout">Sign out</button></div>
+<main class="landing" id="landing">
+  <h1>Tutors</h1>
+  <p class="sub">Voice whiteboard tutors</p>
+  <div id="tutors"></div>
+</main>
+<script src="/static/home.js"></script>
+<script>
+function row(t) {
+  const div = document.createElement('div'); div.className = 'tutor';
+  const thumb = document.createElement('div'); thumb.className = 'thumb';
+  const img = document.createElement('img'); img.src = '/static/' + t.image; img.alt = '';
+  thumb.appendChild(img);
+  const text = document.createElement('div');
+  const a = document.createElement('a'); a.href = t.url; a.textContent = t.title;
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = t.subtitle;
+  text.append(a, d); div.append(thumb, text);
+  return div;
+}
+api('/api/me').then(m => { $('me').textContent = m.username; }).catch(() => { location = '/'; });
+api('/api/tutors').then(list => { for (const t of list) $('tutors').appendChild(row(t)); });
+$('signout').addEventListener('click', async () => {
+  try { await api('/api/signout', {}); } catch {}
+  location = '/';
+});
+</script>
+</body>
+</html>
