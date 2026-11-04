@@ -1,7 +1,7 @@
 """The tutoring agent: system prompt, the tool loop, and per-student storage.
 
 One Tutor serves every student.  Each student is a JSON file in DATA_DIR,
-named from their email address, holding their record (which carries over
+named from their account key (acct-<id>, see auth.py), holding their record (which carries over
 between sessions) and the current conversation (the API message history plus
 what the browser shows).
 """
