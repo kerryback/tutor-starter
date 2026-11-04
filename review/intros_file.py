@@ -20,7 +20,7 @@ def _items(s):
 
 def read(path: Path) -> dict:
     """{"preamble", "course": {"spoken", "board"} or None, "modules": [{"n", "title", "spoken", "board", "objectives"}]}."""
-    text = Path(path).read_text()
+    text = Path(path).read_text(encoding="utf-8")
     first = re.search(r"^## ", text, re.M)
     preamble = text[:first.start()] if first else text
     course, modules = None, []
@@ -74,5 +74,5 @@ def write(path: Path, doc: dict) -> None:
         sections.append(_section(f"Module {m['n']} — {m['title']}", m["spoken"], m["board"], m["objectives"]))
     path = Path(path)
     tmp = path.with_name(path.name + ".part")
-    tmp.write_text(doc.get("preamble", "") + "\n".join(sections))
+    tmp.write_text(doc.get("preamble", "") + "\n".join(sections), encoding="utf-8")
     tmp.replace(path)

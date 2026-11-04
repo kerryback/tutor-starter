@@ -50,7 +50,7 @@ def _list_of_objects(value, key, where):
 def load(tutor_dir: Path) -> dict:
     path = Path(tutor_dir) / "review.json"
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise PlanError(f"There is no review.json in {Path(tutor_dir).name}.") from None
     except json.JSONDecodeError as e:
@@ -133,13 +133,13 @@ def apply_edits(plan: dict, edits: dict) -> dict:
 def save(tutor_dir: Path, plan: dict) -> None:
     path = Path(tutor_dir) / "review.json"
     tmp = path.with_name("review.json.part")
-    tmp.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n")
+    tmp.write_text(json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     tmp.replace(path)
 
 
 def _blocks(tutor_dir, tool):
     path = Path(tutor_dir) / tool["file"]
-    lines = path.read_text().splitlines() if path.is_file() else None
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else None
     out = []
     for block in tool["code"]:
         start, _, end = str(block.get("lines", "")).partition("-")
@@ -157,7 +157,7 @@ def _latest_eval(root, name):
     files = sorted((Path(root) / "evals" / "results").glob(f"*-{name}.json"))
     if not files:
         return None
-    results = json.loads(files[-1].read_text())
+    results = json.loads(files[-1].read_text(encoding="utf-8"))
     checks = [ok for scenario in results.values() for ok in scenario.get("checks", {}).values()]
     return {"file": files[-1].name, "passed": sum(bool(c) for c in checks), "total": len(checks)}
 

@@ -16,7 +16,7 @@ else
   SIGNIN=(TUTORS_LOCAL=1)
 fi
 echo "Starting the $1 tutor at http://localhost:$PORT  (Ctrl-C stops it)"
-( sleep 4; [ -n "${NO_OPEN:-}" ] || open "http://localhost:$PORT" 2>/dev/null || true ) &
+( sleep 4; open_url "http://localhost:$PORT" ) &
 cd "$ROOT/engine"
 exec env TUTOR_DIR="$ROOT/$1" VOICE_ENABLED=1 ${SIGNIN[@]+"${SIGNIN[@]}"} \
-  "$ROOT/.venv/bin/uvicorn" app:app --host 127.0.0.1 --port "$PORT"
+  "$PY" -m uvicorn app:app --host 127.0.0.1 --port "$PORT"

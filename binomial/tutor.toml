@@ -14,8 +14,5 @@ references = ["01-replication.md", "02-risk-neutral.md", "03-multiperiod.md",
               "04-american.md", "exercises.md"]
 
 [deploy]
-app = "binomial-voice"
-service = "web"
-volume = "binomial-voice-data"
-instance = "medium"
-region = "fra"
+project = "binomial-voice"          # the Railway project; its one service is "web"
+region = "europe-west4-drams3a"     # Railway's EU West region, in Amsterdam

@@ -8,8 +8,8 @@ set -euo pipefail
 source "$(dirname "$0")/_common.sh"
 PORT="${1:-8060}"
 echo "Starting the home page at http://localhost:$PORT  (Ctrl-C stops it)"
-( sleep 2; [ -n "${NO_OPEN:-}" ] || open "http://localhost:$PORT" 2>/dev/null || true ) &
+( sleep 2; open_url "http://localhost:$PORT" ) &
 cd "$ROOT/home"
 TUTORS_DEV=1 TUTORS_SECRET="${TUTORS_SECRET:-dev}" TUTORS_PEPPER="${TUTORS_PEPPER:-dev}" \
   TUTORS_HOME="http://localhost:$PORT" HOME_DATA_DIR="$ROOT/home/data" \
-  exec "$ROOT/.venv/bin/uvicorn" app:app --host 127.0.0.1 --port "$PORT"
+  exec "$PY" -m uvicorn app:app --host 127.0.0.1 --port "$PORT"

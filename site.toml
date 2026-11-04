@@ -8,5 +8,6 @@ smtp_port = 587
 smtp_user = "apikey"
 model = "claude-sonnet-5-5"
 effort = "medium"
-elevenlabs = false                  # true: ElevenLabs speaks, using the secret elevenlabs-api-key
+voice = "kokoro"                    # "kokoro": free, runs with the tutor. "elevenlabs": paid; needs ELEVENLABS_API_KEY
 anthropic_base_url = ""             # set this when calling Claude through a gateway
+railway_workspace = ""              # only if your Railway account has more than one workspace: its name

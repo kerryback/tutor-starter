@@ -37,7 +37,7 @@ HOME = os.environ.get("TUTORS_HOME", "https://tutors.example.edu").rstrip("/")
 COOKIE_DOMAIN = os.environ.get("TUTORS_COOKIE_DOMAIN")
 DATA_DIR = Path(os.environ.get("HOME_DATA_DIR", HERE / "data"))
 REPLY = "If that address can be used, we sent a link. Check your inbox and junk folder."
-TUTORS = tomllib.loads((HERE / "tutors.toml").read_text())["tutor"]
+TUTORS = tomllib.loads((HERE / "tutors.toml").read_text(encoding="utf-8"))["tutor"]
 for _t in TUTORS:
     _t.setdefault("url", f"https://{_t['name']}.{COOKIE_DOMAIN or sc.DOMAIN}/")
 
@@ -84,10 +84,12 @@ def _signed_in(request):
 
 
 def _ip(request):
-    # Koyeb sits behind Cloudflare, which puts the visitor's address in
-    # CF-Connecting-IP; the first X-Forwarded-For entry is whatever the client sent.
+    # Railway's edge sets X-Real-IP to the visitor's address, replacing any
+    # copy the client sent (behind Cloudflare, it takes it from CF-Connecting-IP).
+    # CF-Connecting-IP itself reaches the app unchanged, so a client can forge it.
+    # The first X-Forwarded-For entry is whatever the client sent.
     forwarded = request.headers.get("x-forwarded-for", "")
-    return (request.headers.get("cf-connecting-ip")
+    return (request.headers.get("x-real-ip")
             or (forwarded.split(",")[-1].strip() if forwarded else "")
             or (request.client.host if request.client else "?"))
 
@@ -181,6 +183,7 @@ def ip_check(request: Request):
     """What address the sign-in limit sees, and the headers it comes from:
     for checking the proxy's headers on a deployed app."""
     _need_secret(request)
-    return {"ip": _ip(request), "cf-connecting-ip": request.headers.get("cf-connecting-ip"),
+    return {"ip": _ip(request), "x-real-ip": request.headers.get("x-real-ip"),
+            "cf-connecting-ip": request.headers.get("cf-connecting-ip"),
             "x-forwarded-for": request.headers.get("x-forwarded-for"),
             "client": request.client.host if request.client else None}

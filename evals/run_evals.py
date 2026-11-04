@@ -56,7 +56,7 @@ async def main(names):
                 failed += not ok
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     path = out_dir / f"{stamp}-{cfg.NAME}.json"
-    path.write_text(json.dumps(results, indent=1, default=str))
+    path.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
     print(f"\n{failed} failed check(s). Transcripts: {path}")
     return failed
 

@@ -34,14 +34,14 @@ def build_system_prompt(voice=False):
     """The shared teaching protocol, the tutor's topic section, its teaching
     scripts as references, the learning objectives, and (voice) the whiteboard
     rules."""
-    parts = [(cfg.INSTRUCTIONS / "teaching.md").read_text(),
-             (cfg.CONTENT / "topic.md").read_text()]
+    parts = [(cfg.INSTRUCTIONS / "teaching.md").read_text(encoding="utf-8"),
+             (cfg.CONTENT / "topic.md").read_text(encoding="utf-8")]
     for name in cfg.REFERENCES:
-        text = (cfg.CONTENT / name).read_text()
+        text = (cfg.CONTENT / name).read_text(encoding="utf-8")
         parts.append(f"<reference file=\"{name}\">\n{text}\n</reference>")
     parts.append(intros.prompt_text())
     if voice:
-        parts.append((cfg.INSTRUCTIONS / "voice.md").read_text())
+        parts.append((cfg.INSTRUCTIONS / "voice.md").read_text(encoding="utf-8"))
     return "\n\n".join(parts)
 
 
@@ -103,7 +103,7 @@ class Store:
         name = (name or key).strip()
         p = self.path(slug)
         if p.exists():
-            student = json.loads(p.read_text())
+            student = json.loads(p.read_text(encoding="utf-8"))
             student["name"] = name
             return student
         return {"name": name, "slug": slug, "progress": None,
@@ -112,7 +112,7 @@ class Store:
     def save(self, student):
         p = self.path(student["slug"])
         tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(student, indent=1))
+        tmp.write_text(json.dumps(student, indent=1), encoding="utf-8")
         tmp.replace(p)
 
 

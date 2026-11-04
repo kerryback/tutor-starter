@@ -152,18 +152,30 @@ def test_account_check_needs_secret(env):
     assert client.get("/api/account/1", headers={"X-Tutors-Secret": "s"}).json() == {"active": False}
 
 
-def test_ip_from_cloudflare_header(env):
+def test_ip_from_railway_header(env):
     mod, client, outbox, _ = env
     create(client, outbox)
     for i in range(20):
         client.post("/api/signin", json={"username": f"u{i}", "code": "0000"},
-                    headers={"CF-Connecting-IP": "1.2.3.4"})
+                    headers={"X-Real-IP": "1.2.3.4"})
     blocked = client.post("/api/signin", json={"username": "jdoe", "code": "1234"},
-                          headers={"CF-Connecting-IP": "1.2.3.4"})
+                          headers={"X-Real-IP": "1.2.3.4"})
     assert blocked.status_code == 401
     ok = client.post("/api/signin", json={"username": "jdoe", "code": "1234"},
-                     headers={"CF-Connecting-IP": "5.6.7.8"})
+                     headers={"X-Real-IP": "5.6.7.8"})
     assert ok.status_code == 200
+
+
+def test_forged_cloudflare_header_does_not_dodge_the_limit(env):
+    # Railway passes CF-Connecting-IP through unchanged, so it is not trusted.
+    mod, client, outbox, _ = env
+    create(client, outbox)
+    for i in range(20):
+        client.post("/api/signin", json={"username": f"u{i}", "code": "0000"},
+                    headers={"X-Real-IP": "1.2.3.4", "CF-Connecting-IP": f"9.9.9.{i}"})
+    blocked = client.post("/api/signin", json={"username": "jdoe", "code": "1234"},
+                          headers={"X-Real-IP": "1.2.3.4", "CF-Connecting-IP": "8.8.8.8"})
+    assert blocked.status_code == 401
 
 
 def test_root_serves_signin_or_landing(client, outbox):
@@ -201,13 +213,14 @@ def test_static_images_served(client):
 def test_ip_limit_is_logged(client, outbox, capsys):
     for i in range(21):
         client.post("/api/signin", json={"username": f"u{i}", "code": "0000"},
-                    headers={"CF-Connecting-IP": "9.9.9.9"})
+                    headers={"X-Real-IP": "9.9.9.9"})
     assert "ip limit: 9.9.9.9" in capsys.readouterr().out
 
 
 def test_ip_check_shows_headers_to_the_secret_holder(client):
-    h = {"CF-Connecting-IP": "1.2.3.4", "X-Forwarded-For": "5.6.7.8, 10.0.0.1"}
+    h = {"X-Real-IP": "1.2.3.4", "CF-Connecting-IP": "7.7.7.7",
+         "X-Forwarded-For": "5.6.7.8, 10.0.0.1"}
     assert client.get("/api/ip-check", headers=h).status_code == 403
     r = client.get("/api/ip-check", headers={**h, "X-Tutors-Secret": "s"}).json()
-    assert r["ip"] == "1.2.3.4"
-    assert r["cf-connecting-ip"] == "1.2.3.4" and r["x-forwarded-for"] == "5.6.7.8, 10.0.0.1"
+    assert r["ip"] == "1.2.3.4" and r["x-real-ip"] == "1.2.3.4"
+    assert r["cf-connecting-ip"] == "7.7.7.7" and r["x-forwarded-for"] == "5.6.7.8, 10.0.0.1"

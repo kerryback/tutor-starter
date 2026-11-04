@@ -23,7 +23,7 @@ DIR = DIR.resolve()
 CONTENT = DIR / "content"
 INSTRUCTIONS = Path(os.environ.get("INSTRUCTIONS_DIR", ROOT / "instructions"))
 
-CONFIG = tomllib.loads((DIR / "tutor.toml").read_text())
+CONFIG = tomllib.loads((DIR / "tutor.toml").read_text(encoding="utf-8"))
 NAME = CONFIG["name"]
 TITLE = CONFIG["title"]
 SUBTITLE = CONFIG.get("subtitle", TITLE)

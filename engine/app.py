@@ -36,7 +36,7 @@ from tutor import SESSION_START, Store, Tutor, student_slug  # noqa: E402
 
 HERE = Path(__file__).parent
 log = logging.getLogger("tutor")
-DATA_DIR = os.environ.get("DATA_DIR", cfg.DIR / "data")   # students' records; a volume on Koyeb
+DATA_DIR = os.environ.get("DATA_DIR", cfg.DIR / "data")   # students' records and speech models; a volume on Railway
 store = Store(DATA_DIR)
 # Sign-in: with TUTORS_LOCAL=1 (scripts/run.sh), everyone is the local test
 # student.  Anywhere else the tutor will not start without TUTORS_SECRET.
@@ -106,7 +106,7 @@ async def index(request: Request):
         here = f"{scheme}://{request.headers.get('host', request.url.netloc)}/"
         return RedirectResponse(f"{HOME}/?next={quote(here, safe='')}", status_code=303)
     # The page names the tutor: {{TITLE}}, {{SUBTITLE}} and {{NAME}} come from tutor.toml.
-    html = (HERE / "static" / "index.html").read_text()
+    html = (HERE / "static" / "index.html").read_text(encoding="utf-8")
     for key in ("TITLE", "SUBTITLE", "NAME"):
         html = html.replace("{{" + key + "}}", escape(getattr(cfg, key)))
     return HTMLResponse(html.replace("{{HOME}}", escape(HOME)))

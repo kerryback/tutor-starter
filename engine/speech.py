@@ -1,4 +1,4 @@
-"""Text-to-speech (ElevenLabs, or Kokoro without a key) and speech-to-text (faster-whisper).
+"""Text-to-speech (Kokoro, or ElevenLabs when site.toml says voice = "elevenlabs") and speech-to-text (faster-whisper).
 
 Each engine runs on its own single-thread executor, so one synthesis and one
 transcription can run at once and neither blocks the event loop.  The models
@@ -50,14 +50,24 @@ class BadAudio(ValueError):
     """The upload is not audio the decoder can read."""
 
 
-def _espeak_lib():
-    return os.environ.get("ESPEAK_LIB") or ctypes.util.find_library("espeak-ng")
+def _espeak():
+    """The espeak-ng library and data folder Kokoro needs, as (lib, data).
 
-
-def _espeak_data():
-    if os.environ.get("ESPEAK_DATA"):
-        return os.environ["ESPEAK_DATA"]
-    return next((d for d in ESPEAK_DATA_DIRS if Path(d).is_dir()), None)
+    ESPEAK_LIB and ESPEAK_DATA win.  Then a system espeak-ng (Homebrew, apt).
+    Otherwise the copy bundled with kokoro-onnx (the espeakng-loader package),
+    which is what Windows uses."""
+    lib, data = os.environ.get("ESPEAK_LIB"), os.environ.get("ESPEAK_DATA")
+    if lib and data:
+        return lib, data
+    system_lib = ctypes.util.find_library("espeak-ng")
+    system_data = next((d for d in ESPEAK_DATA_DIRS if Path(d).is_dir()), None)
+    if system_lib and system_data:
+        return lib or system_lib, data or system_data
+    try:
+        import espeakng_loader
+        return lib or espeakng_loader.get_library_path(), data or espeakng_loader.get_data_path()
+    except Exception:  # noqa: BLE001 - not installed, or no build for this machine
+        return lib or system_lib, data or system_data
 
 
 def _download(url, dest: Path):
@@ -87,7 +97,7 @@ def _pcm_wav(pcm, rate):
 
 
 def _voice_name():
-    if settings.ELEVENLABS_API_KEY:
+    if settings.use_elevenlabs():
         return f"eleven-{settings.ELEVENLABS_VOICE}-{settings.ELEVENLABS_MODEL}"
     return f"{settings.KOKORO_VOICE}-{settings.KOKORO_SPEED:g}"
 
@@ -112,13 +122,18 @@ class Speech:
             from kokoro_onnx.config import EspeakConfig
 
             models = self.data_dir / "models"
-            if settings.ELEVENLABS_API_KEY:
+            if settings.use_elevenlabs():
                 print(f"speech: ElevenLabs voice {settings.ELEVENLABS_VOICE}", flush=True)
             else:
-                print("speech: no ELEVENLABS_API_KEY, so Kokoro speaks", flush=True)
+                if settings.VOICE == "elevenlabs":
+                    print('speech: voice = "elevenlabs" but no ELEVENLABS_API_KEY, so Kokoro speaks', flush=True)
+                elif settings.VOICE != "kokoro":
+                    print(f'speech: unknown voice "{settings.VOICE}", so Kokoro speaks', flush=True)
+                else:
+                    print("speech: Kokoro speaks", flush=True)
                 _download(MODEL_URL + KOKORO_MODEL, models / KOKORO_MODEL)
                 _download(MODEL_URL + KOKORO_VOICES, models / KOKORO_VOICES)
-                lib, data = _espeak_lib(), _espeak_data()
+                lib, data = _espeak()
                 if not lib or not data:
                     raise RuntimeError("espeak-ng not found")
                 self._kokoro = Kokoro(str(models / KOKORO_MODEL), str(models / KOKORO_VOICES),
@@ -133,7 +148,7 @@ class Speech:
     # --- text to speech ---
 
     def _synth(self, text):
-        if settings.ELEVENLABS_API_KEY:
+        if settings.use_elevenlabs():
             return self._synth_eleven(text)
         samples, rate = self._kokoro.create(text, voice=settings.KOKORO_VOICE, speed=settings.KOKORO_SPEED, lang="en-us")
         return _wav_bytes(samples, rate)

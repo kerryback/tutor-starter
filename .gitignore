@@ -8,3 +8,4 @@ evals/results/
 .playwright-mcp/
 data/models/
 .demo/
+deploy.env

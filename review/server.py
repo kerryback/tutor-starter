@@ -8,6 +8,7 @@ content/module-intros.md.
 import argparse
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -142,7 +143,10 @@ def create_app(tutor_dir: Path, root: Path = ROOT) -> FastAPI:
     @app.post("/api/tests")
     def tests():
         built()
-        r = subprocess.run([str(root / "scripts" / "test.sh"), tutor_dir.name], cwd=root,
+        # Through bash, so it runs on Windows too.  shutil.which finds Git Bash's bash
+        # before C:\\Windows\\System32\\bash.exe (WSL), which a bare "bash" would start.
+        bash = shutil.which("bash") or "bash"
+        r = subprocess.run([bash, str(root / "scripts" / "test.sh"), tutor_dir.name], cwd=root,
                            capture_output=True, text=True)
         lines = (r.stdout + r.stderr).strip().splitlines()
         return {"ok": r.returncode == 0, "summary": "\n".join(lines[-15:])}

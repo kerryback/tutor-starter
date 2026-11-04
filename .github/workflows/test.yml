@@ -1,0 +1,32 @@
+# Setup and tests on Windows, macOS, and Linux.  On Windows, "shell: bash" is
+# Git Bash, the shell Claude Code uses there.  The Windows job also loads the
+# real Kokoro and Whisper models and speaks one sentence.
+name: test
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: scripts/setup.sh
+      - run: scripts/test.sh
+      - name: The real voice engines
+        if: runner.os == 'Windows'
+        env:
+          VOICE_ENGINE_TESTS: "1"
+          TUTOR_DIR: binomial
+          PYTHONUTF8: "1"
+        run: .venv/Scripts/python.exe -m pytest -q engine/tests/test_speech_engines.py

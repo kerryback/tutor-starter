@@ -16,7 +16,7 @@ FILE = cfg.CONTENT / "module-intros.md"
 def load(path=FILE):
     """{n: {"n", "title", "spoken", "board": [...], "objectives": [...]}}."""
     modules = {}
-    for block in re.split(r"^## ", path.read_text(), flags=re.M)[1:]:
+    for block in re.split(r"^## ", path.read_text(encoding="utf-8"), flags=re.M)[1:]:
         head, _, body = block.partition("\n")
         m = re.match(r"Module\s+(\d+)\s*[—–-]\s*(.+)", head)
         if not m:
@@ -36,7 +36,7 @@ MODULES = load()
 
 def load_course(path=FILE):
     """The course Introduction: {"spoken", "board": [...]}, or None."""
-    m = re.search(r"^## Introduction\n(.*?)(?=^## |\Z)", path.read_text(), re.M | re.S)
+    m = re.search(r"^## Introduction\n(.*?)(?=^## |\Z)", path.read_text(encoding="utf-8"), re.M | re.S)
     if not m:
         return None
     parts = dict(re.findall(r"^(Spoken|Board):\n(.*?)(?=^\w+:\n|\Z)", m.group(1), re.M | re.S))

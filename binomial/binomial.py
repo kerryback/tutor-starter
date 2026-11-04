@@ -500,7 +500,7 @@ def main():
         f1 = tree_figure(sol["stock"], color="blue", ytitle="Underlying Price")
         f2 = tree_figure(sol["value"], color="green", ytitle=sol["kind"] + " Value",
                          reverse=(sol["right"] == "put"))
-        with open(a.plot, "w") as fh:
+        with open(a.plot, "w", encoding="utf-8") as fh:
             fh.write(f1.to_html(full_html=True, include_plotlyjs="cdn"))
             fh.write(f2.to_html(full_html=False, include_plotlyjs=False))
         print(f"\nWrote {a.plot}")

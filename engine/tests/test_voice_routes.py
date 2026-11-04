@@ -191,6 +191,7 @@ def test_elevenlabs_idle_cache_is_keyed_on_its_voice(tmp_path, monkeypatch):
     import asyncio
     import settings
     import speech as speech_mod
+    monkeypatch.setattr(settings, "VOICE", "elevenlabs")
     monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "k")
     sp = speech_mod.Speech(tmp_path)
     sp._synth = lambda text: b"RIFFx"
@@ -205,6 +206,7 @@ def test_elevenlabs_synth_asks_for_pcm_and_returns_wav(tmp_path, monkeypatch):
     import httpx
     import settings
     import speech as speech_mod
+    monkeypatch.setattr(settings, "VOICE", "elevenlabs")
     monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "k")
     sent = {}
 
@@ -396,3 +398,25 @@ def test_transcribe_of_pure_noise_is_empty(tmp_path):
     sp = speech_mod.Speech(tmp_path)
     sp._whisper = W()
     assert sp._transcribe(_wav(1)) == ""
+
+
+def test_a_key_alone_does_not_switch_to_elevenlabs(monkeypatch):
+    import settings
+    monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "k")
+    monkeypatch.setattr(settings, "VOICE", "kokoro")
+    assert settings.use_elevenlabs() is False
+    monkeypatch.setattr(settings, "VOICE", "elevenlabs")
+    assert settings.use_elevenlabs() is True
+    monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "")
+    assert settings.use_elevenlabs() is False      # no key: Kokoro speaks
+
+
+def test_espeak_falls_back_to_the_bundled_copy(monkeypatch):
+    import ctypes.util
+    import speech as speech_mod
+    monkeypatch.delenv("ESPEAK_LIB", raising=False)
+    monkeypatch.delenv("ESPEAK_DATA", raising=False)
+    monkeypatch.setattr(ctypes.util, "find_library", lambda name: None)   # as on Windows
+    lib, data = speech_mod._espeak()
+    import espeakng_loader
+    assert (lib, data) == (espeakng_loader.get_library_path(), espeakng_loader.get_data_path())
