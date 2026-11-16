@@ -177,19 +177,30 @@ function buildBoard() {
       <span id="wbstatus" role="status" aria-live="polite"></span>
       <div class="ctl">
         <button type="button" id="pausebtn" disabled>Pause</button>
+        <button type="button" id="notebtn" aria-pressed="false" hidden>Note</button>
         <button type="button" id="typebtn" aria-pressed="false">Type</button>
       </div>
+    </div>
+    <div id="notepanel" hidden>
+      <div class="notehead">Note to Claude about the tutor: what to change, add or explain differently.
+        While this is open, what you say goes into the note, not to the tutor.</div>
+      <textarea id="notetext" rows="3" placeholder="For example: give an analogy for discounting before the formula."></textarea>
+      <div class="notebtns"><button type="button" id="notesave" class="primary">Save note</button>
+        <button type="button" id="noteclose">Close</button><span id="notemsg"></span></div>
+      <ol id="notelist"></ol>
     </div>
     <div id="startcard" hidden>
       <p id="startnote"></p>
       <button type="button" id="startbtn" class="primary">Start</button>
     </div>`;
   log.parentNode.insertBefore(wb, log);
-  wb.insertBefore(log, wb.querySelector('#startcard'));
+  wb.insertBefore(log, wb.querySelector('#notepanel'));
   const q = (s) => wb.querySelector(s);
   q('#startnote').textContent = NOTICE;
   return { wb, log, modsel: q('#modsel'), prev: q('#prevsec'), next: q('#nextsec'),
     status: q('#wbstatus'), pause: q('#pausebtn'), type: q('#typebtn'),
+    notebtn: q('#notebtn'), notepanel: q('#notepanel'), notetext: q('#notetext'), notesave: q('#notesave'),
+    noteclose: q('#noteclose'), notemsg: q('#notemsg'), notelist: q('#notelist'),
     startcard: q('#startcard'), startnote: q('#startnote'), start: q('#startbtn'),
     composer: document.getElementById('composer') };
 }
@@ -382,6 +393,49 @@ export async function init(config, { isBusy, chat }) {
     ui.type.setAttribute('aria-pressed', String(on));
     if (on) document.getElementById('msg').focus();
   });
+
+  // The teacher's notes (the preview only: config.teacher). While the panel is
+  // open, a spoken utterance goes into the note instead of to the tutor.
+  const noting = () => !!config.teacher && !ui.notepanel.hidden;
+  async function loadNotes() {
+    try {
+      const notes = await (await fetch('/api/notes')).json();
+      ui.notelist.replaceChildren(...notes.slice().reverse().map((n) => {
+        const li = document.createElement('li');
+        const where = [n.module ? `Module ${n.module}` : '', n.section || ''].filter(Boolean).join(', ');
+        li.className = 'note-' + n.status;
+        li.textContent = `[${n.status}] ${where ? where + ': ' : ''}${n.text}` + (n.reply ? ` | Claude: ${n.reply}` : '');
+        return li;
+      }));
+    } catch {}
+  }
+  if (config.teacher) {
+    ui.notebtn.hidden = false;
+    ui.notebtn.addEventListener('click', () => {
+      const on = ui.notepanel.hidden;
+      ui.notepanel.hidden = !on;
+      ui.notebtn.setAttribute('aria-pressed', String(on));
+      if (on) { loadNotes(); ui.notetext.focus(); }
+    });
+    ui.noteclose.addEventListener('click', () => ui.notebtn.click());
+    ui.notesave.addEventListener('click', async () => {
+      const text = ui.notetext.value.trim();
+      if (!text) return;
+      ui.notesave.disabled = true;
+      try {
+        const r = await fetch('/api/note', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }) });
+        if (!r.ok) throw new Error(`error ${r.status}`);
+        ui.notetext.value = '';
+        ui.notemsg.textContent = 'Saved. Claude applies it in the terminal; the tutor uses it from its next reply.';
+        loadNotes();
+      } catch (e) {
+        ui.notemsg.textContent = 'Could not save the note (' + plain(e) + ').';
+      } finally { ui.notesave.disabled = false; }
+    });
+    setInterval(() => { if (noting()) loadNotes(); }, 5000);
+  }
+
 
   // --- status and playback -------------------------------------------------------
 
@@ -645,6 +699,11 @@ export async function init(config, { isBusy, chat }) {
       return;
     }
     deadline.transcriptSent();
+    if (noting()) {         // the teacher is dictating a note: it goes into the note
+      ui.notetext.value = (ui.notetext.value.trim() + ' ' + text).trim();
+      updateStatus(); listen();
+      return;
+    }
     addMsg('student', text);
     chat(text, false);
   }

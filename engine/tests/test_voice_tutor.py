@@ -136,3 +136,17 @@ def test_step_separator_ends_the_spoken_sentence(tmp_path, monkeypatch):
     kinds = [e["type"] if e["type"] != "text" else repr(e["text"]) for e in evs]
     # The first sentence is said before the second model call's text arrives.
     assert kinds.index("say") < kinds.index(repr("That is right. Now find q."))
+
+
+def test_the_teacher_file_goes_into_the_prompt_before_the_voice_rules(monkeypatch, tmp_path):
+    import tutor_config as cfg
+    import shutil
+    content = tmp_path / "content"
+    shutil.copytree(cfg.CONTENT, content)
+    monkeypatch.setattr(cfg, "CONTENT", content)
+    base = build_system_prompt(voice=True)
+    assert "The teacher's instructions" not in base
+    (content / "teacher.md").write_text("Give an analogy before every formula.\n")
+    p = build_system_prompt(voice=True)
+    i, v = p.index("Give an analogy before every formula."), p.index("# Voice mode")
+    assert p.index("# The teacher's instructions") < i < v

@@ -9,3 +9,4 @@ evals/results/
 data/models/
 .demo/
 deploy.env
+*/notes.jsonl

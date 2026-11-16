@@ -49,6 +49,10 @@ def _float(name, default):
 KOKORO_SPEED = _float("KOKORO_SPEED", 0.9)   # 1.0 is Kokoro's normal pace; lower is slower
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
 VOICE_IDLE_SECONDS = _int("VOICE_IDLE_SECONDS", 45)
+# The teacher's preview (scripts/preview.sh): a Note button on the board, and the
+# prompt rebuilt at every turn so edits apply at once.  Only with TUTORS_LOCAL=1,
+# so a deployed tutor can never be in this mode.
+TEACHER = _on("TUTORS_TEACHER") and _on("TUTORS_LOCAL")
 
 
 def use_elevenlabs():

@@ -14,10 +14,15 @@ In Claude Code:
 /plugin install tutor@kerryback-public
 ```
 
-Start a new session, and say "make a tutor for <topic>", pointing at your slides,
-notebooks, or code. The skill clones this repo to `~/repos/tutors`, builds the
-tutor, and takes you through a review page, a local try, evals, and the deploy.
-It waits for your approval at each.
+Start a new session, and run `/tutor:create` (or say "make a tutor for <topic>"),
+pointing at your slides, notebooks, or code. The skill clones this repo to
+`~/repos/tutors`, builds the tutor, and takes you through a review page, a local
+try, evals, and the deploy. It waits for your approval at each.
+
+To change a tutor, run `/tutor:edit <tutor>`. It opens a preview with a Note
+button: play the tutor as a student, and when something should change, press
+Note, type or say it, and save. Claude applies each note to the tutor's files,
+and the tutor uses the change from its next reply.
 
 ## What is here
 
@@ -38,6 +43,8 @@ It waits for your approval at each.
 scripts/setup.sh                 # once: creates .venv and installs everything
 scripts/test.sh                  # tests for every tutor
 scripts/run.sh binomial          # run a tutor here, with voice, in the browser
+scripts/preview.sh binomial      # the same, with a Note button for the teacher
+scripts/notes.py list binomial   # the teacher's notes from the preview
 scripts/review.sh binomial       # open the review page
 scripts/eval.sh binomial         # behavior evals against the real model (about $0.50)
 ```
@@ -62,13 +69,15 @@ you are a local test student. Student data stays in `<tutor>/data`, which Git ig
 | `content/topic.md` | The topic section of the prompt: routing, tools, conventions, mistakes, and notation |
 | `content/module-intros.md` | The Introduction and each module's spoken intro, board items, and learning objectives |
 | `content/*.md` | The teaching scripts and the problem bank |
+| `content/teacher.md` | The teacher's own instructions (optional): general rules, and rules for a module |
 | `topic.py` | The tutor's own tools and plots |
 | `tests/` | Its tests, including a pinned hash of its full prompt |
 | `evals.py` | Its eval scenarios |
 | `snapshot/` | Frozen data for the lessons, with its source and dates |
 
 The prompt is built in this order: `instructions/teaching.md`, `content/topic.md`,
-the teaching scripts, the learning objectives, then `instructions/voice.md`.
+the teaching scripts, the learning objectives, `content/teacher.md` if there is
+one (it takes precedence over the scripts), then `instructions/voice.md`.
 
 A change to `engine/` or `instructions/` reaches every tutor on its next deploy.
 A change to the instructions fails each tutor's pinned prompt test until you run

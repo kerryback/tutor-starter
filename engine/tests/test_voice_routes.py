@@ -420,3 +420,36 @@ def test_espeak_falls_back_to_the_bundled_copy(monkeypatch):
     lib, data = speech_mod._espeak()
     import espeakng_loader
     assert (lib, data) == (espeakng_loader.get_library_path(), espeakng_loader.get_data_path())
+
+
+def test_note_routes_exist_only_in_the_preview(env, signed_in, tmp_path, monkeypatch):
+    app_mod, client, _, _ = env
+    signed_in()
+    assert client.post("/api/note", json={"text": "x"}).status_code == 404
+    assert client.get("/api/notes").status_code == 404
+    assert "teacher" not in client.get("/api/config").json()
+
+    monkeypatch.setattr(app_mod.settings, "TEACHER", True)
+    monkeypatch.setattr(app_mod, "NOTES", tmp_path / "notes.jsonl")
+    s = app_mod.store.load("acct-7")
+    s["conversation"]["display"] = [
+        {"role": "tutor", "text": "## Module 2: Many cash flows\n\nIntro.", "intro": True},
+        {"role": "tutor", "text": "## Discount each one\n\nThe year-1 flow is worth 18.18 today."}]
+    app_mod.store.save(s)
+    assert client.get("/api/config").json()["teacher"] is True
+    assert client.post("/api/note", json={"text": "  "}).status_code == 400
+    n = client.post("/api/note", json={"text": "Use a bus-ticket analogy."}).json()
+    assert (n["id"], n["module"], n["section"], n["status"]) == (1, 2, "Discount each one", "new")
+    assert n["tutor_said"].endswith("18.18 today.")
+    assert [x["text"] for x in client.get("/api/notes").json()] == ["Use a bus-ticket analogy."]
+
+
+def test_teacher_mode_needs_a_local_run(monkeypatch):
+    import settings
+    monkeypatch.setenv("TUTORS_TEACHER", "1")
+    monkeypatch.delenv("TUTORS_LOCAL", raising=False)
+    assert importlib.reload(settings).TEACHER is False
+    monkeypatch.setenv("TUTORS_LOCAL", "1")
+    assert importlib.reload(settings).TEACHER is True
+    monkeypatch.undo()
+    importlib.reload(settings)

@@ -18,6 +18,7 @@ import anthropic
 
 from speech_text import SpeechStream
 import intros
+import settings
 import tutor_config as cfg
 from tools import TOOLS, ToolError, run_tool
 
@@ -30,6 +31,12 @@ SESSION_START = ("[Session start. This note is from the app, not the student. "
                  "Open the session as the protocol says.]")
 
 
+TEACHER_HEAD = ("# The teacher's instructions\n\n"
+                "These come from the instructor who teaches this course. Follow them. Where one "
+                "conflicts with the teaching protocol or a teaching script above, the teacher's "
+                "instruction wins. The whiteboard and voice rules that follow still hold.\n\n")
+
+
 def build_system_prompt(voice=False):
     """The shared teaching protocol, the tutor's topic section, its teaching
     scripts as references, the learning objectives, and (voice) the whiteboard
@@ -40,6 +47,9 @@ def build_system_prompt(voice=False):
         text = (cfg.CONTENT / name).read_text(encoding="utf-8")
         parts.append(f"<reference file=\"{name}\">\n{text}\n</reference>")
     parts.append(intros.prompt_text())
+    teacher = cfg.CONTENT / "teacher.md"
+    if teacher.exists() and teacher.read_text().strip():
+        parts.append(TEACHER_HEAD + teacher.read_text().strip())
     if voice:
         parts.append((cfg.INSTRUCTIONS / "voice.md").read_text(encoding="utf-8"))
     return "\n\n".join(parts)
@@ -228,6 +238,8 @@ class Tutor:
                 conv["display"].append({"role": "tutor", "text": "".join(buf)})
             buf.clear()
 
+        if settings.TEACHER:          # the preview: the teacher's edits apply at the next turn
+            self.system_prompt = build_system_prompt(self.voice)
         system = [{"type": "text", "text": self.system_prompt},
                   {"type": "text", "text": conv["record"]}]
         try:

@@ -32,6 +32,7 @@ import tutor_config as cfg  # noqa: E402
 from auth import SessionCheck, home_fetcher  # noqa: E402
 import session_cookie as sc  # noqa: E402
 import intros  # noqa: E402
+import teacher_notes  # noqa: E402
 from tutor import SESSION_START, Store, Tutor, student_slug  # noqa: E402
 
 HERE = Path(__file__).parent
@@ -181,9 +182,39 @@ _listens = defaultdict(deque)
 def config():
     out = {"voice": speech is not None, "voice_ready": bool(speech and speech.ready),
            "idle_seconds": settings.VOICE_IDLE_SECONDS}
+    if settings.TEACHER:
+        out["teacher"] = True
     if speech is not None:
         out["modules"] = MODULES
     return out
+
+
+# --- the teacher's notes (the preview only: settings.TEACHER) --------------------
+
+NOTES = cfg.DIR / "notes.jsonl"
+
+
+class Note(BaseModel):
+    text: str
+
+
+@app.get("/api/notes")
+async def notes():
+    if not settings.TEACHER:
+        raise HTTPException(404)
+    return teacher_notes.load(NOTES)
+
+
+@app.post("/api/note")
+async def note(req: Note, request: Request):
+    if not settings.TEACHER:
+        raise HTTPException(404)
+    if not req.text.strip():
+        raise HTTPException(400, "The note is empty.")
+    who = await _student(request)
+    s = live.get(store.load(who.key)["slug"]) or store.load(who.key, who.username)
+    display = (s.get("conversation") or {}).get("display") or []
+    return teacher_notes.add(NOTES, req.text, display)
 
 
 def _modules():
