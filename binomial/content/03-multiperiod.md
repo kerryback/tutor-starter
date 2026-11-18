@@ -8,9 +8,12 @@ Then the module answers where u and d come from: the student fits a tree to an
 estimated volatility by the Cox-Ross-Rubinstein rule, and sees why the log
 return becomes normal as the number of periods grows (section 6).
 
-## 1. Ask before you show
+Teach it in this order. In each part, teach the idea and work the example
+yourself first, then give the student the practice example and wait.
 
-Extend the running example to two periods: from 110 the stock goes to 121 or 99;
+## 1. Two periods
+
+Teach: extend the running example to two periods: from 110 the stock goes to 121 or 99;
 from 90 it goes to 99 or 81. Same 2% per period, same strike of 100.
 
 ```
@@ -23,23 +26,23 @@ from 90 it goes to 99 or 81. Same 2% per period, same strike of 100.
                                          81.00
 ```
 
-Ask two questions before teaching anything, and wait for both:
+Say two things about it:
 
-1. Why is there one node at 99 instead of two? (Up-then-down and
-   down-then-up land in the same place, because `u·d = d·u`. The tree
-   recombines. This is worth flagging now because it is what makes large trees
-   computable.)
+1. There is one node at 99, not two. Up-then-down and down-then-up land in the
+   same place, because `u·d = d·u`. The tree recombines. This is worth flagging
+   now because it is what makes large trees computable.
 2. We know how to price an option that expires next period. Here the option has
-   two periods to go. Where could we stand in this tree such that the problem
-   looks like the one we already solved?
+   two periods to go. Stand at date 1: at 110 or at 90, one period is left, so
+   each date-1 node is a one-period problem we have already solved. Solve those
+   first, then step back to date 0. That is backward induction, and it is the
+   module.
 
-Question 2 is the module. If the student says "at date 1," they have discovered
-backward induction and the rest is arithmetic. If they don't, narrow it: "suppose
-it's date 1 and the stock is at 110 — how many periods are left?"
+Practice: a stock is at 50, with u = 1.2 and d = 0.9. What are the stock prices
+at date 2, and how many nodes are there? (72, 54 and 40.50: three nodes.)
 
 ## 2. Work backward
 
-Terminal payoffs first — ask for them: 21, 0, 0.
+Teach: terminal payoffs first: 21, 0, 0.
 
 Now the up node at date 1. The stock is at 110 and goes to 121 or 99. That is
 exactly a one-period problem, and `q = 0.6` still, because q depends only on u,
@@ -49,9 +52,8 @@ d, and r:
 C_u = (0.6 · 21 + 0.4 · 0)/1.02 = 12.35
 ```
 
-Ask for the down node yourself before giving it (0, since the option is worthless
-in both successor states). Then date 0, treating the date-1 values as the
-payoffs:
+The down node is 0, since the option is worthless in both successor states.
+Then date 0, treating the date-1 values as the payoffs:
 
 ```
 C_0 = (0.6 · 12.35 + 0.4 · 0)/1.02 = 7.27
@@ -68,23 +70,25 @@ C_0 = (0.6 · 12.35 + 0.4 · 0)/1.02 = 7.27
 ```
 
 The step students skip past: at date 0 we discounted 12.35, which is not a cash
-flow. Nobody receives 12.35. Ask why we may treat it as one. (Because it is the
-market value of the option at that node — you could sell it for exactly that,
-and a value you can convert to cash is as good as cash.)
+flow. Nobody receives 12.35. Say why we may treat it as one: it is the market
+value of the option at that node — you could sell it for exactly that, and a
+value you can convert to cash is as good as cash.
+
+Practice: same tree, a European call with strike 105. What are the terminal
+payoffs, the value at the up node, and the price today? (16, 0, 0; up node
+`0.6 · 16/1.02 = 9.41`; today `0.6 · 9.41/1.02 = 5.54`.)
 
 ## 3. The hedge is dynamic — this is the real content
 
-Most students take backward induction on faith. Don't let them; the replication
-argument still has to work, and seeing it work is what makes multi-period pricing
-believable.
+Teach: most students take backward induction on faith. Don't let them; the
+replication argument still has to work, and seeing it work is what makes
+multi-period pricing believable.
 
 At date 0, `Δ = (12.35 − 0)/(110 − 90) = 0.6176` and `B = 7.27 − 0.6176·100 =
 −54.50`.
 
-Now the question to ask, and it is the good one:
-
-> Hold that portfolio for one period. If the stock goes up to 110, what is it
-> worth?
+Now the step that matters: hold that portfolio for one period. If the stock
+goes up to 110, it is worth
 
 ```
 0.6176 · 110 − 54.50 · 1.02 = 67.94 − 55.59 = 12.35
@@ -97,7 +101,7 @@ self-financing, and it is what licenses the whole recursion: the option is
 replicated not by one static portfolio but by a trading strategy that rebalances
 at each node.
 
-Have them compute the new delta at the up node: `(21 − 0)/(121 − 99) = 0.9545`.
+Compute the new delta at the up node: `(21 − 0)/(121 − 99) = 0.9545`.
 The hedge got heavier as the option moved into the money. That is delta hedging,
 and the student has now done it.
 
@@ -109,9 +113,17 @@ python scripts/binomial.py --S 100 --K 100 --r 0.02 --u 1.1 --d 0.9 --n 2 \
 The `delta` and `bond` columns let them check the self-financing property at
 every node.
 
+Practice: the strike-105 call from part 2. What are Δ and B at date 0, and
+what is that portfolio worth if the stock goes up to 110? (Δ = 9.41/20 =
+0.4706, B = −41.52; worth 9.41, exactly the up-node value.) Then: what is delta
+at the up node? (16/22 = 0.7273.)
+
 ## 4. Fill in the node
 
-Give them this and stop:
+Teach: the format is the one from Module 2, and each blank node is solved as in
+part 2. Point back at the worked tree in part 2 as the example.
+
+Practice: give them this and stop:
 
 ```
         t=0                t=1                t=2
@@ -136,19 +148,18 @@ python scripts/binomial.py --S 40 --K 42 --r 0.04 --u 1.2 --d 0.85 --n 2 \
     --kind "European put" --blank d
 ```
 
-A worthwhile follow-up on this particular tree: the exercise value at the date-1
-down node is 42 − 34 = 8, which is more than the 6.38 we just computed. Ask what
-that means. It means nothing yet for a European put — the holder cannot act on it
+A worthwhile remark on this particular tree: the exercise value at the date-1
+down node is 42 − 34 = 8, which is more than the 6.38 we just computed. Say
+what that means. It means nothing yet for a European put — the holder cannot act on it
 — and it is the entire subject of Module 4. This is a good place to end if the
 student wants a break.
 
 ## 5. n periods
 
-Two moves generalize the recursion; ask the student to supply both.
+Teach: two moves generalize the recursion.
 
 Number of nodes. At date t there are t+1 nodes, not 2^t, because the tree
-recombines. Ask them to count paths versus nodes at date 3: eight paths, four
-nodes. A 50-period tree has 2^50 paths — about a quadrillion — and 51 nodes.
+recombines. Count paths versus nodes at date 3: eight paths, four nodes. A 50-period tree has 2^50 paths — about a quadrillion — and 51 nodes.
 That gap is why this model is practical.
 
 The recursion. At every node with time left,
@@ -174,10 +185,14 @@ Check it against the two-period answer: only k = 2 pays, so
 for European options: it assumes we never do anything before the terminal date.
 Module 4 breaks that assumption, and the formula goes with it.
 
+Practice: at date 10, how many nodes and how many paths? (11 nodes, 1,024
+paths.) Then: use the formula to price the strike-105 call from part 2. (Only
+k = 2 pays: `0.36 · 16/1.02² = 5.54`, the same as by backward induction.)
+
 ## 6. Calibration: fitting the tree to volatility
 
-Teach this after section 5. Until now u and d were given. Real options do not
-come with a tree: they come with a time to maturity, an interest rate, and an
+Teach this after section 5. Teach: until now u and d were given. Real options
+do not come with a tree: they come with a time to maturity, an interest rate, and an
 estimate of the stock's volatility. The periods are not economically
 meaningful. They slice a fixed time T into n pieces, and u and d are chosen so
 that the tree's returns have the volatility we estimated.
@@ -188,8 +203,8 @@ Volatility σ is the standard deviation of the stock's continuously compounded
 return over one year. The continuously compounded (log) return over a period
 is `log(S_end / S_start)`.
 
-Ask how they would estimate σ from price data. Most students get to "the
-standard deviation of past returns" and need help with two details:
+To estimate σ from price data, take the standard deviation of past returns,
+with two details:
 
 1. Use log returns, `log(S_t / S_{t−1})`, one for each day.
 2. Annualize. Returns on separate days are roughly independent, so variances
@@ -202,11 +217,14 @@ standard deviation of past returns" and need help with two details:
 
 Example: a daily standard deviation of 1.26% gives `σ = 0.0126 × √252 = 0.20`.
 
-The trap to set: ask for the annual figure before showing the rule. A student
-who multiplies by 252 gets 3.18, a volatility of 318%, and should be asked
-whether that is believable. Variances scale with time; standard deviations
+Name the trap: a student who multiplies by 252 gets 3.18, a volatility of
+318%, which is not believable. Variances scale with time; standard deviations
 scale with its square root. The same rule carries the volatility from a year
 down to one period of the tree.
+
+Practice: a daily standard deviation of 1.5%. What is σ? (`0.015 × √252 =
+0.2381`.) A student who gets 3.78 multiplied by 252; ask whether 378% is
+believable.
 
 Only if asked: traders often use implied volatility instead, the σ that makes
 a model price match a market price. Calibration works the same way with either.
@@ -220,14 +238,17 @@ the log return is either `log u` or `log d`, so under q its variance is
 q(1 − q)(log u − log d)²
 ```
 
-That should equal `σ²Δt`, the variance of a log return over Δt. Ask the student
-for `σ²Δt` before showing the formula: it is the scaling rule again.
+That should equal `σ²Δt`, the variance of a log return over Δt: it is the
+scaling rule again.
 
 The mean matters too. In the continuous-time model the risk-neutral mean of the
 log return over a period is `(rate − σ²/2)Δt`, where `rate` is the annual
 continuously compounded rate. Do not derive the −σ²/2 term. Say that it is the
 gap between the average log return and the log of the average return.
 Getting the variance right matters most; the mean comes right as Δt shrinks.
+
+Practice: σ = 0.25 and monthly periods, Δt = 1/12. What is the variance of the
+log return over one period? (`0.25²/12 = 0.0052`.)
 
 ### The Cox-Ross-Rubinstein rule
 
@@ -241,7 +262,7 @@ q = (1 + r − d) / (u − d)
 the starting price. `u = e^(σ√Δt)` makes the log return each period
 `+σ√Δt` or `−σ√Δt`. q comes from the per-period rate exactly as in Module 2.
 
-Check the variance with the student: `(log u − log d)² = 4σ²Δt`, so the
+Check the variance on the board: `(log u − log d)² = 4σ²Δt`, so the
 variance per period is `4q(1 − q)σ²Δt`. That is exactly `σ²Δt` when q = 1/2,
 and q goes to 1/2 as Δt shrinks. For σ = 0.3, a 5% rate and T = 1:
 
@@ -261,8 +282,8 @@ smaller and there are more of them, so the volatility over the year stays σ.
 ### Worked example — a calibrated tree
 
 S = 100, K = 100, European call, σ = 0.3, rate 5% a year continuously
-compounded, T = 1 year, n = 4 periods. Ask for each parameter before giving it,
-and get each from `calculate`:
+compounded, T = 1 year, n = 4 periods. Work each parameter, and get each from
+`calculate`:
 
 - Δt = 1/4 = 0.25
 - u = e^(0.3 × √0.25) = e^0.15 = 1.1618
@@ -271,23 +292,28 @@ and get each from `calculate`:
 - q = (1.0126 − 0.8607)/(1.1618 − 0.8607) = 0.5043
 
 Then draw the tree with `show_tree`, passing `sigma`, `rate` and `T` (the tools
-apply the same rule), and ask for one node the usual way. The call is worth
-13.52. With n = 12 it is worth 13.99. The price changes with n because a finer
+apply the same rule). The call is worth 13.52. With n = 12 it is worth 13.99. The price changes with n because a finer
 tree is a better approximation, not because the stock changed. Once the
 parameters are set, the pricing is sections 2 to 5 unchanged.
 
+Practice: S = 100, K = 100, European call, σ = 0.25, rate 4% a year
+continuously compounded, T = 0.5 years, n = 2. What are Δt, u, d, r and q?
+(Δt = 0.25, u = 1.1331, d = 0.8825, r = 1.01% per period, q = 0.5089.) Then
+draw it with `show_tree`, passing `sigma`, `rate` and `T`, and ask for one node
+the usual way. (The call is worth 7.21.)
+
 ### Why returns become normal
 
-This is the idea the section builds to. Ask the student to describe the log
-return over the whole T years. They have the pieces:
+Teach: this is the idea the section builds to. Describe the log return over
+the whole T years from the pieces the student already has:
 
 - It is the sum of n per-period log returns.
 - Each is `+σ√Δt` or `−σ√Δt`, independently of the others.
 - With k up moves, `log(S_T / S) = (2k − n)σ√Δt`, and k is binomial.
 
 So the log return over T is a sum of many small, independent, identically
-distributed pieces. Ask which theorem says what such a sum looks like: the
-central limit theorem. As n grows with T fixed, the distribution approaches a
+distributed pieces. The central limit theorem says what such a sum looks
+like. As n grows with T fixed, the distribution approaches a
 normal distribution, with mean `(rate − σ²/2)T` and variance `σ²T`.
 
 ```
@@ -296,7 +322,7 @@ log(S_T / S)  →  normal, mean (rate − σ²/2)T, variance σ²T
 
 Show it with `show_plot` and the `return_distribution` plot: bars for the
 tree's probability of each possible log return, and a curve for the normal
-limit. Plot n = 3, then n = 50, with the same σ, rate and T, and ask what
+limit. Plot n = 3, then n = 50, with the same σ, rate and T, and say what
 changed. Three periods give four possible returns and a poor fit; fifty give
 bars that follow the curve.
 
@@ -307,6 +333,10 @@ converges to the Black-Scholes price (14.23 in the worked example) as n grows.
 The binomial model is not an approximation to reality that Black-Scholes
 improves on; they are the same model at different resolutions. Say this in a
 sentence or two and do not develop Black-Scholes.
+
+Practice: σ = 0.25, rate 4% a year, T = 2 years. What are the mean and the
+variance of the log return in the normal limit? (Mean `(0.04 − 0.25²/2) × 2 =
+0.0175`, variance `0.25² × 2 = 0.125`.)
 
 ### Exercise — calibrate and price
 

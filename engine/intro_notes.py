@@ -4,5 +4,5 @@ calculate, and the browser asks for the microphone when the student presses
 Start.  The review page shows and plays them too."""
 
 ARITHMETIC_NOTE = ("You never need to do any arithmetic calculation; you can say, for example, "
-                   "nineteen divided by twenty-seven rather than calculating and saying the decimal number.")
+                   "eight plus twelve, all divided by fifty, instead of doing the addition and division yourself.")
 MIC_NOTE = "Please allow use of your microphone if a popup appears requesting permission."

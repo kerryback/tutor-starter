@@ -47,7 +47,7 @@ async def main(names):
             turns, checks = await harness.SCENARIOS[name](tutor, student)
             checks = {"no service errors": not any(t["errors"] for t in turns), **checks}
             checks["no symbols in any spoken sentence"] = harness.speech_is_clean(turns)
-            checks["every spoken number is on the board"] = harness.numbers_on_board(turns)
+            checks["every number in a calculation is on the board"] = harness.numbers_on_board(turns)
             checks["every board formula is also said in words"] = harness.formulas_are_read_aloud(turns)
             results[name] = {"checks": checks, "turns": turns, "tool_calls": harness.tool_calls(student)}
             print(f"\n== {name}")

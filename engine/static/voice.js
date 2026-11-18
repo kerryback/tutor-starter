@@ -18,6 +18,17 @@
 //   stop()              the conversation is replaced (new session, sign out)
 //   audioBusy           true while the tutor's audio is still playing
 //
+// Optional hooks, passed to init() beside isBusy and chat, replace the server's
+// speech routes (the Claude Code plugin speaks and listens in the browser):
+//   synth(text)         -> Promise of {audio: Float32Array, rate}; used instead of
+//                          GET /api/say/<n>. Say events then carry their text.
+//   transcribe(samples) -> Promise of the transcript of 16 kHz Float32 samples;
+//                          used instead of POST /api/listen
+//   isReady()           -> true once the voice can run; used instead of /api/config
+//   notice              the line on the Start card, instead of NOTICE
+//   restart()           restart the module the student is in; without it the
+//                          board has no Restart button
+//
 // Listening: after Start, when the tutor has finished speaking and no turn is
 // running, the microphone opens and Silero VAD (vad-web) waits for the student
 // to speak. Each finished utterance goes to POST /api/listen as a WAV and the
@@ -31,6 +42,7 @@
 
 import { createIdleDeadline } from './idle-deadline.js';
 import { encodeWav } from './wav.js';
+import { mountSheet } from './sheet.js';
 
 const KATEX = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/';
 const WHITEBOARD_FONT = 'https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap';
@@ -47,6 +59,29 @@ const VAD_RATE = 16000;     // vad-web gives 16 kHz samples
 export const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'touchend', 'click'];
 
 // --- pure helpers ------------------------------------------------------------
+
+const IOS = (ua, touch) => /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1);
+
+// What to tell the student when the microphone cannot open. On iOS a page
+// cannot ask while the phone's own setting for the browser is off.
+export function micMessage(e, ua = globalThis.navigator?.userAgent || '', touch = globalThis.navigator?.maxTouchPoints || 0) {
+  const name = e && e.name;
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    if (IOS(ua, touch)) {
+      const app = /CriOS/.test(ua) ? 'Chrome' : /FxiOS/.test(ua) ? 'Firefox' : /EdgiOS/.test(ua) ? 'Edge' : 'Safari';
+      return `The microphone is blocked. Open the Settings app, find ${app} (under Apps on recent iPhones), and turn on Microphone. ` +
+        `Then reload this page and allow the microphone when ${app} asks.`;
+    }
+    if (/Android/.test(ua)) {
+      return 'The microphone is blocked. Tap the icon to the left of the web address, tap Permissions, ' +
+        'and allow Microphone. If it is still blocked, open the Settings app, tap Apps, then your browser, ' +
+        'then Permissions, and allow Microphone. Then reload this page.';
+    }
+    return 'The microphone is blocked. Allow it for this site in your browser\'s settings, then reload this page.';
+  }
+  if (name === 'NotFoundError') return 'No microphone was found.';
+  return 'Could not use the microphone (' + String(e && e.message || 'error').replace(/\.$/, '') + ').';
+}
 
 const token = (k) => `@@math${k}@@`;
 
@@ -173,14 +208,17 @@ function buildBoard() {
         <button type="button" id="prevsec" aria-label="Previous section">◀</button>
         <button type="button" id="nextsec" aria-label="Next section">▶</button>
         <select id="modsel" aria-label="Go to a module"><option value="">Go to a module</option></select>
+        <button type="button" id="restartbtn" title="Start the module you are in over, on a clean board" hidden>Restart</button>
       </div>
       <span id="wbstatus" role="status" aria-live="polite"></span>
       <div class="ctl">
         <button type="button" id="pausebtn" disabled>Pause</button>
         <button type="button" id="notebtn" aria-pressed="false" hidden>Note</button>
+        <button type="button" id="sheetbtn" aria-pressed="false">Sheet</button>
         <button type="button" id="typebtn" aria-pressed="false">Type</button>
       </div>
     </div>
+    <div id="sheet" hidden></div>
     <div id="notepanel" hidden>
       <div class="notehead">Note to Claude about the tutor: what to change, add or explain differently.
         While this is open, what you say goes into the note, not to the tutor.</div>
@@ -194,13 +232,14 @@ function buildBoard() {
       <button type="button" id="startbtn" class="primary">Start</button>
     </div>`;
   log.parentNode.insertBefore(wb, log);
-  wb.insertBefore(log, wb.querySelector('#notepanel'));
+  wb.insertBefore(log, wb.querySelector('#sheet'));
   const q = (s) => wb.querySelector(s);
   q('#startnote').textContent = NOTICE;
   return { wb, log, modsel: q('#modsel'), prev: q('#prevsec'), next: q('#nextsec'),
     status: q('#wbstatus'), pause: q('#pausebtn'), type: q('#typebtn'),
-    notebtn: q('#notebtn'), notepanel: q('#notepanel'), notetext: q('#notetext'), notesave: q('#notesave'),
-    noteclose: q('#noteclose'), notemsg: q('#notemsg'), notelist: q('#notelist'),
+    sheetbtn: q('#sheetbtn'), sheet: q('#sheet'), notebtn: q('#notebtn'), notepanel: q('#notepanel'),
+    notetext: q('#notetext'), notesave: q('#notesave'), noteclose: q('#noteclose'), notemsg: q('#notemsg'),
+    notelist: q('#notelist'), restart: q('#restartbtn'),
     startcard: q('#startcard'), startnote: q('#startnote'), start: q('#startbtn'),
     composer: document.getElementById('composer') };
 }
@@ -225,9 +264,10 @@ function loadVad() {   // once; a failed load is tried again on the next Resume
   return vadLib;
 }
 
-export async function init(config, { isBusy, chat }) {
+export async function init(config, { isBusy, chat, synth, transcribe, isReady, notice, restart }) {
   await loadKatex();
   const ui = buildBoard();
+  if (notice) ui.startnote.textContent = notice;
   const send = document.getElementById('send');
 
   let ready = !!config.voice_ready;
@@ -254,11 +294,23 @@ export async function init(config, { isBusy, chat }) {
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 1024;
   analyser.connect(ctx.destination);
-  let unlock;
-  const unlocked = new Promise((r) => { unlock = r; });
-  const tryUnlock = () => held ? undefined : ctx.resume().then(() => { if (ctx.state === 'running') unlock(); }).catch(() => {});
+  const tryUnlock = () => held ? undefined : ctx.resume().catch(() => {});
   for (const ev of UNLOCK_EVENTS) document.addEventListener(ev, tryUnlock, true);
-  if (ctx.state === 'running') unlock();
+  // Resolves when the context runs. iOS can suspend or "interrupt" it at any
+  // time (the microphone opening, a call, another app's audio), not only
+  // before the first tap, so playback checks before every clip.
+  function running() {
+    if (ctx.state === 'running') return Promise.resolve();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (ctx.state !== 'running') return;
+        ctx.removeEventListener('statechange', check);
+        resolve();
+      };
+      ctx.addEventListener('statechange', check);
+      ctx.resume().catch(() => {});
+    });
+  }
 
   let queue = [];        // promises of AudioBuffer (null = skip), in say order
   let queued = 0, spokenCount = 0;   // clips put in the queue, and clips finished (played, skipped or dropped)
@@ -386,6 +438,15 @@ export async function init(config, { isBusy, chat }) {
     chat('', false, m.n);   // the server plays the module's fixed intro, then the tutor teaches
   });
 
+  // Restart: the page (restart) asks the server to start the module over on a
+  // clean board, then plays its intro. Hidden where the page has no restart.
+  ui.restart.hidden = !restart;
+  ui.restart.addEventListener('click', () => {
+    if (!started || isBusy() || speaking || playing) return;
+    if (!confirm('Start this module over? The board is cleared, and your progress in this module is reset.')) return;
+    restart();
+  });
+
   ui.prev.addEventListener('click', () => show(view - 1));
   ui.next.addEventListener('click', () => show(view + 1));
   ui.type.addEventListener('click', () => {
@@ -394,6 +455,14 @@ export async function init(config, { isBusy, chat }) {
     if (on) document.getElementById('msg').focus();
   });
 
+  // The spreadsheet. Work in it counts as activity: it restarts the idle
+  // window, so the microphone does not close while the student calculates.
+  const sheet = mountSheet(ui.sheet, { onInput() {
+    if (!listening) return;
+    deadline.transcriptSent();
+    deadline.arm();
+    schedule();
+  } });
   // The teacher's notes (the preview only: config.teacher). While the panel is
   // open, a spoken utterance goes into the note instead of to the tutor.
   const noting = () => !!config.teacher && !ui.notepanel.hidden;
@@ -436,16 +505,21 @@ export async function init(config, { isBusy, chat }) {
     setInterval(() => { if (noting()) loadNotes(); }, 5000);
   }
 
+  ui.sheetbtn.addEventListener('click', () => {
+    const on = !sheet.isOpen();
+    if (on) sheet.open(); else sheet.close();
+    ui.sheetbtn.setAttribute('aria-pressed', String(on));
+  });
 
   // --- status and playback -------------------------------------------------------
 
   function updateStatus() {
     let s = '';
-    if (!ready) s = 'Voice is unavailable right now.';
+    if (!ready) s = isReady ? 'loading the voice…' : 'Voice is unavailable right now.';
     else if (!started) s = 'press Start';
     else if (held) s = 'paused';
     else if (speaking) s = 'speaking…';
-    else if (waitingUnlock) s = 'click to hear the tutor';
+    else if (waitingUnlock) s = 'tap to hear the tutor';
     else if (turnActive || hearing) s = 'thinking…';
     else if (listening) s = 'listening…';
     else if (paused && !playing) s = 'paused — press Resume';
@@ -454,6 +528,7 @@ export async function init(config, { isBusy, chat }) {
     ui.pause.disabled = !ready || !started || (!held && paused && (playing || speaking));
     ui.start.disabled = !ready;
     ui.modsel.disabled = !ready || !started || turnActive || speaking || playing;
+    ui.restart.disabled = ui.modsel.disabled;
   }
 
   // Send is disabled while the tutor works and while its audio is playing.
@@ -497,8 +572,13 @@ export async function init(config, { isBusy, chat }) {
 
   function enqueue(p) { queue.push(p); queued++; }
 
-  function fetchClip(n) {   // n: a sentence number, or 'idle'
-    const p = fetch(`/api/say/${n}`).then(async (r) => {
+  function fetchClip(n, text) {   // n: a sentence number, or 'idle'; text: what synth speaks
+    const p = synth ? synth(text ?? config.idle_text ?? 'Press the button when you are ready to continue.')
+      .then(({ audio, rate }) => {
+        const buf = ctx.createBuffer(1, audio.length, rate);
+        buf.copyToChannel(audio, 0);
+        return buf;
+      }) : fetch(`/api/say/${n}`).then(async (r) => {
       if (r.status === 404) return null;           // stale sentence number: skip
       if (!r.ok) throw new Error(r.status === 503 ? 'voice is not ready' : `audio error ${r.status}`);
       return ctx.decodeAudioData(await r.arrayBuffer());
@@ -532,8 +612,11 @@ export async function init(config, { isBusy, chat }) {
       if (g !== gen) return;
       if (!buf) { spoken(); continue; }
       if (ctx.state !== 'running' && !held) {
+        await Promise.race([running(), new Promise((r) => setTimeout(r, 300))]);
+      }
+      if (ctx.state !== 'running' && !held) {
         waitingUnlock = true; updateStatus();
-        await unlocked;
+        await running();
         if (g !== gen) return;
         waitingUnlock = false;
       }
@@ -568,6 +651,12 @@ export async function init(config, { isBusy, chat }) {
   }
 
   // --- listening -------------------------------------------------------------
+
+  // iOS plays Web Audio through the ring/silent switch unless the page says it
+  // records and plays (Safari and Chrome on iOS 16.4 and later).
+  function setAudioSession() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch {}
+  }
 
   function canListen() {
     return ready && started && !paused && !held && !stopping && !turnActive && !isBusy() &&
@@ -646,7 +735,7 @@ export async function init(config, { isBusy, chat }) {
   }
 
   function micFailed(e) {
-    addMsg('error', 'Could not use the microphone (' + plain(e) + ').');
+    addMsg('error', micMessage(e));
     hold();
   }
 
@@ -677,6 +766,7 @@ export async function init(config, { isBusy, chat }) {
     hearing = true; updateStatus();
     let text = '', err = null;
     try {
+      if (transcribe) text = ((await transcribe(audio)) || '').trim(); else {
       const r = await fetch('/api/listen', {
         method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: encodeWav(audio, VAD_RATE) });
       if (!r.ok) {
@@ -685,6 +775,7 @@ export async function init(config, { isBusy, chat }) {
         throw new Error(m);
       }
       text = ((await r.json()).text || '').trim();
+      }
     } catch (e) { err = e; }
     hearing = false;
     // Stopped meanwhile (sign out), or the student typed a message instead.
@@ -740,16 +831,30 @@ export async function init(config, { isBusy, chat }) {
   ui.start.addEventListener('click', () => {
     if (!ready) return;
     try { localStorage.setItem(NOTICE_KEY(), 'ok'); } catch {}
-    started = true;
+    setAudioSession();
+    ctx.resume().catch(() => {});
     ui.startcard.hidden = true;
-    updateStatus();
-    const f = onStart; onStart = null;
-    if (f) f();
+    askMic().then((err) => {
+      if (err) addMsg('error', micMessage(err) + ' You can still type: press Type.');
+      started = true;
+      updateStatus();
+      const f = onStart; onStart = null;
+      if (f) f();
+    });
   });
+
+  // Ask for the microphone inside the Start tap, then let it go: listening
+  // opens it again later, and by then the answer is known. null = allowed.
+  function askMic() {
+    if (!navigator.mediaDevices?.getUserMedia) return Promise.resolve(null);
+    return mic().then((stream) => { stream.getTracks().forEach((t) => t.stop()); return null; },
+      (e) => e);
+  }
 
   // Models still loading: check again until ready.
   function waitReady() {
     if (ready) return;
+    if (isReady) { setTimeout(() => { if (isReady()) { ready = true; updateStatus(); } else waitReady(); }, 500); return; }
     setTimeout(() => fetch('/api/config').then((r) => r.json()).then((c) => {
       if (c.voice_ready) { ready = true; updateStatus(); } else waitReady();
     }).catch(waitReady), 3000);
@@ -786,6 +891,8 @@ export async function init(config, { isBusy, chat }) {
       updateStatus();
     },
     get audioBusy() { return speaking || playing; },
+    sheetPending: () => sheet.pending(),   // the sheet as text if it changed since sheetSent(), else null
+    sheetSent: () => sheet.sent(),
     onTurnStart() {
       release();        // typing a message ends a Pause
       document.body.classList.remove('captions');
@@ -797,7 +904,7 @@ export async function init(config, { isBusy, chat }) {
     },
     onChatEvent(ev) {
       if (ev.type !== 'say' || !ready || !started) return;
-      enqueue(fetchClip(ev.n));
+      enqueue(fetchClip(ev.n, ev.text));
       if (!playing) pump();
     },
     onTurnEnd() {

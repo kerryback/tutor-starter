@@ -73,8 +73,8 @@ def test_inline_span_with_period_space_is_not_split():
 
 
 def test_dollar_amounts_survive():
-    assert spoken_form("Value $5 and $6 here.") == "Value $5 and $6 here."
-    assert run(["Value $5 and $6 here. Then $C_u$ too."]) == ["Value $5 and $6 here.", "Then too."]
+    assert spoken_form("Value $5 and $6 here.") == "Value five dollars and six dollars here."
+    assert run(["Value $5 and $6 here. Then $C_u$ too."]) == ["Value five dollars and six dollars here.", "Then too."]
     assert spoken_form("Use $C_u$.") == "Use."
 
 
@@ -98,11 +98,11 @@ def test_inline_plain_text_formulas_are_not_spoken():
 def test_prose_that_looks_like_symbols_survives():
     for s in ["Use a two-period tree.",
               "You can call and/or put.",
-              "The payoff is $5 at the top.",
               "The up/down moves are fixed.",
               "Is the option in-the-money?",
               "See the tree (on the board) now."]:
         assert spoken_form(s) == s, s
+    assert spoken_form("The payoff is $5 at the top.") == "The payoff is five dollars at the top."
 
 
 def test_italic_markers_do_not_look_like_multiplication():
@@ -116,7 +116,7 @@ def test_decimals_are_said_as_point_and_a_number():
     assert spoken_form("R is 1.02.") == "R is one point oh two."
     assert spoken_form("Daily volatility is 0.0126.") == "Daily volatility is zero point zero one two six."
     assert spoken_form("u is 1.1618.") == "u is one point one six one eight."
-    assert spoken_form("It costs $5.88 now.") == "It costs five point eighty-eight dollars now."
+    assert spoken_form("It costs $5.88 now.") == "It costs five dollars and eighty-eight cents now."
     assert spoken_form("The rate is 10% per year.") == "The rate is 10 percent per year."
     assert spoken_form("Rates of 2.5% apply.") == "Rates of two point five percent apply."
     assert spoken_form("A total of 1,234.50.") == "A total of one thousand two hundred thirty-four point fifty."
@@ -138,3 +138,30 @@ def test_formula_lines_and_symbols(prose, spoken):
 def test_symbols_run_together_are_spoken_as_separate_words():
     assert spoken_form("The volatility per period is σ√Δt, by the same rule.") == \
         "The volatility per period is sigma the square root of delta t, by the same rule."
+
+
+def test_say_table_changes_speech_only():
+    from speech_text import SpeechStream, spoken_form
+    say = {"CAPM": "cap-em"}
+    assert spoken_form("The CAPM says alpha is zero.", say) == "The cap-em says alpha is zero."
+    assert spoken_form("The CAPM's claim.", say) == "The cap-em's claim."
+    assert spoken_form("The CAPMX and ICAPM stay.", say) == "The CAPMX and ICAPM stay."
+    assert spoken_form("The CAPM says alpha is zero.") == "The CAPM says alpha is zero."
+    s = SpeechStream(say)
+    assert s.feed("Welcome to the CAPM tutor. ") + s.flush() == ["Welcome to the cap-em tutor."]
+
+
+def test_dollars_and_cents():
+    from speech_text import spoken_form
+    say = lambda x: spoken_form(f"It is {x} today.").removeprefix("It is ").removesuffix(" today.")
+    assert say("$50.00") == "fifty dollars"
+    assert say("$50") == "fifty dollars"
+    assert say("$1,628.89") == "one thousand six hundred twenty-eight dollars and eighty-nine cents"
+    assert say("$1.05") == "one dollar and five cents"
+    assert say("$1.00") == "one dollar"
+    assert say("$0.41") == "forty-one cents"
+    assert say("$0.01") == "one cent"
+    assert say("$5.8") == "five dollars and eighty cents"
+    assert say("−$1.58") == "minus one dollar and fifty-eight cents"
+    assert say("$1.5 million") == "one point five million dollars"
+    assert say("$2 billion") == "two billion dollars"

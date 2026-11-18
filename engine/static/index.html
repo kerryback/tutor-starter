@@ -80,11 +80,11 @@ body.voice main { flex: 1; min-height: 0; height: auto; width: 100%; max-width: 
 #wbbar .nav { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 #wbbar .ctl { display: flex; gap: 8px; }
 #wbbar button { background: #fff; color: #1d232b; border-color: #cfd3d9; padding: 5px 12px; }
-#wbstatus { min-width: 90px; text-align: right; }
+#wbstatus { min-width: 90px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #modsel { appearance: none; -webkit-appearance: none; font: 500 14px system-ui, sans-serif;
   color: #1d232b; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%234a5260' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;
   border: 1px solid #cfd3d9; border-radius: 8px; padding: 6px 34px 6px 12px; margin-left: 6px;
-  max-width: 240px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  max-width: 240px; min-width: 0; text-overflow: ellipsis; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
 #modsel:hover:not(:disabled) { border-color: #9aa3ae; background-color: #f7f8fa; }
 #modsel:focus-visible { outline: 2px solid #2f5d8a; outline-offset: 1px; }
 #modsel:disabled { opacity: .5; cursor: default; }
@@ -118,6 +118,23 @@ body.voice .typing { font: 15px system-ui, sans-serif; }
 #startcard p { max-width: 420px; margin: 0; }
 #startbtn { font-size: 22px; padding: 12px 40px; }
 body.voice:not(.typing) #composer { display: none; }
+/* The spreadsheet (static/sheet.js), under the board when open */
+#sheet { flex: 0 0 auto; max-height: 45%; display: flex; flex-direction: column; border-top: 2px solid #c9cdd3;
+  background: #fff; font: 14px system-ui, sans-serif; color: #1d232b; }
+#sheet .sheetbar { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 8px; color: #4a5260; font-size: 13px; }
+#sheet .sheetbar button { padding: 2px 10px; background: #fff; color: #1d232b; border-color: #cfd3d9; }
+#sheet .sheetgrid { overflow: auto; min-height: 0; scroll-padding: 28px 0 0 40px; }
+#sheet table { border-collapse: collapse; }
+#sheet th { position: sticky; top: 0; background: #f1f3f5; color: #66707c; font-weight: 500;
+  border: 1px solid #dde1e6; padding: 2px 6px; min-width: 28px; z-index: 1; }
+#sheet tbody th { position: sticky; left: 0; top: auto; }
+#sheet td { border: 1px solid #dde1e6; padding: 0; }
+#sheet td input { width: 92px; border: 0; border-radius: 0; padding: 3px 6px; background: transparent;
+  color: #1d232b; font: 14px ui-monospace, Menlo, monospace; }
+#sheet td input.num { text-align: right; }
+#sheet td input.err { color: #b4532a; }
+#sheet td input:focus { outline: 2px solid #2f5d8a; outline-offset: -2px; text-align: left; }
 /* The teacher's notes (the preview only) */
 #notepanel { flex: 0 0 auto; max-height: 45%; overflow: auto; border-top: 2px solid #c9a227; background: #fffbea;
   padding: 8px 12px; font: 14px system-ui, sans-serif; color: #1d232b; }
@@ -133,6 +150,12 @@ body.voice:not(.typing) #composer { display: none; }
   body.voice #log { font-size: 18px; padding: 12px 14px; }
   .section .sectitle { font-size: 24px; }
   #wbstatus { min-width: 0; }
+  /* Two rows: the arrows and module menu, then the status and Pause/Type. */
+  #wbbar { gap: 8px 10px; padding: 8px; }
+  #wbbar .nav { flex: 1 1 100%; }
+  #modsel { flex: 1; max-width: none; margin-left: 0; }
+  #wbstatus { flex: 1; text-align: left; }
+  #startcard { top: 96px; }
 }
 </style>
 </head>
@@ -277,7 +300,10 @@ async function chat(message, start, module) {
   const finishCur = () => {};
   voice?.onTurnStart();
   try {
-    const r = await post('/api/chat', {message, start, module: module ?? null});
+    // The spreadsheet goes with a student's own message, if it changed since the last one.
+    const sheet = (!start && module == null) ? (voice?.sheetPending?.() ?? null) : null;
+    const r = await post('/api/chat', {message, start, module: module ?? null, sheet});
+    if (sheet !== null) voice.sheetSent();
     const reader = r.body.getReader(), dec = new TextDecoder();
     let pending = '';
     while (true) {
@@ -343,6 +369,16 @@ $('newbtn').addEventListener('click', async () => {
   if (busy || !confirm('Start a new session? Your progress record is kept.')) return;
   try { enter(await (await post('/api/new')).json()); } catch (e) { addMsg('error', e.message); }
 });
+// The board's Restart button: the server clears the module's progress and
+// starts a new conversation; then the module's intro plays on a clean board.
+async function restartModule() {
+  if (busy) return;
+  try {
+    const view = await (await post('/api/restart')).json();
+    voice?.stop(); render(view.display);
+    chat('', false, view.module);
+  } catch (e) { addMsg('error', e.message); }
+}
 $('outbtn').addEventListener('click', async () => {
   if (busy) return;
   voice?.stop();
@@ -356,7 +392,7 @@ async function startVoice() {
     const cfg = await (await fetch('/api/config')).json();
     if (!cfg.voice) return;
     const mod = await import('/static/voice.js');
-    voice = window.voice = await mod.init(cfg, {isBusy: () => busy, chat});
+    voice = window.voice = await mod.init(cfg, {isBusy: () => busy, chat, restart: restartModule});
     document.body.classList.add('voice');
   } catch (e) { console.error('voice failed to start', e); }
 }

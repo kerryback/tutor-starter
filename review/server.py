@@ -10,6 +10,7 @@ import importlib.util
 import os
 import shutil
 import subprocess
+import tomllib
 import sys
 import threading
 from pathlib import Path
@@ -120,7 +121,8 @@ def create_app(tutor_dir: Path, root: Path = ROOT) -> FastAPI:
         if not s.ready:
             raise HTTPException(503, "The voice could not load: " + s.error if s.error
                                 else "The voice is still loading. Try again in a minute.")
-        wav = await s.synth(speech_text.spoken_form(str(body.get("text", ""))))
+        say = tomllib.loads((tutor_dir / "tutor.toml").read_text(encoding="utf-8")).get("say", {})
+        wav = await s.synth(speech_text.spoken_form(str(body.get("text", "")), say))
         return Response(wav, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     @app.post("/api/plot")

@@ -28,6 +28,7 @@ NAME = CONFIG["name"]
 TITLE = CONFIG["title"]
 SUBTITLE = CONFIG.get("subtitle", TITLE)
 WHISPER_PROMPT = CONFIG.get("whisper_prompt", "")
+SAY = CONFIG.get("say", {})   # how the voice says some words: {"CAPM": "cap-em"}
 REFERENCES = CONFIG.get("references", [])
 
 sys.path.insert(0, str(DIR))

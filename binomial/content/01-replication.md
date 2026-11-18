@@ -3,11 +3,12 @@
 Goal: the student should be able to say why an option has exactly one possible
 price, and compute it, without ever mentioning a probability.
 
-Teach it in this order. Stop at each question.
+Teach it in this order. In each part, teach the idea and work the example
+yourself first, then give the student the practice example and wait.
 
 ## 1. Set up the tree
 
-Give them the numbers and draw the stock tree. Running example:
+Teach: give the numbers and draw the stock tree. Running example:
 
 - Stock is at 100. In one period it is either 110 or 90.
 - Risk-free rate is 2% per period, so a dollar in the bond becomes 1.02.
@@ -21,19 +22,21 @@ Give them the numbers and draw the stock tree. Running example:
                       90.00
 ```
 
-First question, and it should be easy on purpose: what does the call pay in each
-state? (10 and 0.) Ask them; do not fill it in.
+Say what the call pays in each state: 110 − 100 = 10 in the up state, and 0 in
+the down state, where the holder lets it expire.
+
+Practice: same tree, a call with strike 95. What does it pay in each state?
+(15 and 0.) It is easy on purpose.
 
 ## 2. Build the portfolio
 
-Now the move that carries everything. Ask: can we build a portfolio of stock and
-bond that pays 10 in the up state and 0 in the down state?
+Teach: now the move that carries everything. We build a portfolio of stock and
+bond that pays 10 in the up state and 0 in the down state.
 
 Let the portfolio hold `Δ` shares and `B` dollars in the bond. Its date-1 value
 is `Δ·110 + 1.02B` up and `Δ·90 + 1.02B` down. Set those equal to 10 and 0.
 
-Have the student subtract one equation from the other before you do. That step
-is the whole idea:
+Subtract one equation from the other. Say that this step is the whole idea:
 
 ```
 Δ(110 − 90) = 10 − 0     so     Δ = (10 − 0)/(110 − 90) = 0.5
@@ -44,11 +47,12 @@ it takes to match the option's sensitivity. Then from the down equation,
 `0.5·90 + 1.02B = 0`, so `B = −45/1.02 = −44.12`. The portfolio is half a share
 financed partly by borrowing 44.12.
 
+Practice: replicate the strike-95 call from part 1. What are Δ and B?
+(Δ = 15/20 = 0.75, B = −0.75·90/1.02 = −66.18.)
+
 ## 3. Price it
 
-Ask: what does that portfolio cost today?
-
-`0.5 · 100 − 44.12 = 5.88`
+Teach: the portfolio costs `0.5 · 100 − 44.12 = 5.88` today.
 
 Then the argument, which is worth saying slowly: the portfolio and the option
 have identical payoffs in every state the world can reach. Two things with the
@@ -57,28 +61,37 @@ one, and pocket the difference today with nothing owed later. So the call is
 worth 5.88. Not approximately, not on average — exactly, or there is free money
 on the table.
 
-Good question to ask here: what would you do if the call were quoted at 6.50?
-(Sell the call, buy the portfolio, keep 0.62 today, and the position nets to zero
-at date 1 in both states.) Let them construct it. Students believe the
-no-arbitrage argument only after they have personally taken money out of it.
+Work one arbitrage: suppose the call is quoted at 6.50. Sell the call, buy the
+portfolio, and keep 0.62 today. At date 1 the portfolio pays exactly what you
+owe on the call in both states, so the position nets to zero.
+
+Practice: what does the strike-95 call cost? (0.75 · 100 − 66.18 = 8.82.) Then:
+it is quoted at 8.00. What do you do? (Buy the call, short 0.75 shares, lend
+66.18, and keep 0.82 today; the position nets to zero at date 1.) Let them
+construct it. Students believe the no-arbitrage argument only after they have
+personally taken money out of it.
 
 ## 4. The punchline
 
-Now the question that makes the module worth doing. Ask it and wait:
+Teach: this is what makes the module worth doing. Say it and let it land:
 
 > Nothing in that calculation used the probability that the stock goes up. Not
-> 50%, not 60%, nothing. How can the price of a bet on the stock not depend on
-> how likely the stock is to rise?
+> 50%, not 60%, nothing. The price of a bet on the stock does not depend on how
+> likely the stock is to rise.
 
-Let them struggle a little. The answer: the hedge works in both states, so we
-never had to weigh them. Two investors who disagree completely about the stock's
-prospects still agree that half a share minus 44.12 of borrowing replicates the
-call, and so they agree on 5.88. The probability is already inside the stock
-price of 100 — the option is priced relative to the stock, and the disagreement
-has nowhere left to enter.
+Then say why: the hedge works in both states, so we never had to weigh them.
+Two investors who disagree completely about the stock's prospects still agree
+that half a share minus 44.12 of borrowing replicates the call, and so they
+agree on 5.88. The probability is already inside the stock price of 100 — the
+option is priced relative to the stock, and the disagreement has nowhere left
+to enter.
 
 This is the sentence students should leave with: the option is priced relative
 to the stock, not from a forecast about the stock.
+
+Practice: one investor thinks the stock goes up with probability 30%, another
+with 90%. What does each say the strike-95 call is worth? (8.82, both.) Then ask
+which line of their calculation would change if the probability changed. (None.)
 
 ## 5. Check understanding
 

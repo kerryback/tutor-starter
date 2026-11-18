@@ -259,7 +259,7 @@ def test_chat_registers_and_clears_the_live_student(env, signed_in):
         def ensure_conversation(self, s, fresh=False):
             return s.setdefault("conversation", {"messages": [], "display": [], "spoken": []})
 
-        async def turn(self, s, text, hidden=False):
+        async def turn(self, s, text, hidden=False, sheet=None):
             seen.append(app_mod.live.get(slug) is s)
             yield {"type": "text", "text": "x"}
 
@@ -277,7 +277,7 @@ def test_chat_clears_live_even_when_the_turn_fails(env, signed_in):
         def ensure_conversation(self, s, fresh=False):
             return s.setdefault("conversation", {"messages": [], "display": []})
 
-        async def turn(self, s, text, hidden=False):
+        async def turn(self, s, text, hidden=False, sheet=None):
             raise RuntimeError("boom")
             yield
 
@@ -400,6 +400,28 @@ def test_transcribe_of_pure_noise_is_empty(tmp_path):
     assert sp._transcribe(_wav(1)) == ""
 
 
+def test_chat_passes_the_spreadsheet_to_the_tutor(env, signed_in):
+    app_mod, client, _, _ = env
+    signed_in()
+    seen = []
+
+    class FakeTutor:
+        voice = True
+
+        def ensure_conversation(self, s, fresh=False):
+            return s.setdefault("conversation", {"messages": [], "display": [], "spoken": []})
+
+        async def turn(self, s, text, hidden=False, sheet=None):
+            seen.append((text, sheet))
+            yield {"type": "text", "text": "x"}
+
+    app_mod.tutor = FakeTutor()
+    assert client.post("/api/chat", json={"message": "12.79", "sheet": "B7: =NPV(B1,B2:B6)  → 12.79"}).status_code == 200
+    assert client.post("/api/chat", json={"message": "ok"}).status_code == 200
+    assert seen == [("12.79", "B7: =NPV(B1,B2:B6)  → 12.79"), ("ok", None)]
+    assert client.post("/api/chat", json={"message": "x", "sheet": "x" * 9000}).status_code == 400
+
+
 def test_a_key_alone_does_not_switch_to_elevenlabs(monkeypatch):
     import settings
     monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "k")
@@ -453,3 +475,34 @@ def test_teacher_mode_needs_a_local_run(monkeypatch):
     assert importlib.reload(settings).TEACHER is True
     monkeypatch.undo()
     importlib.reload(settings)
+
+
+def test_restart_starts_the_current_module_over(env, signed_in):
+    app_mod, client, _, _ = env
+    signed_in()
+    client.get("/api/me")
+    assert client.post("/api/restart").status_code == 400      # not in a module yet
+
+    s = app_mod.store.load("acct-7")
+    s["conversation"]["messages"] = [{"role": "user", "content": "hi"}]
+    s["conversation"]["display"] = [
+        {"role": "tutor", "text": "## Module 1: One\n\nIntro.", "intro": True},
+        {"role": "tutor", "text": "## Module 2: Two\n\nIntro.", "intro": True},
+        {"role": "tutor", "text": "## Discount each one\n\nWorth 18.18 today."}]
+    s["progress"] = {"modules_done": [1, 2], "now_in": "2, exercise 2.3", "mistakes_seen": ["sign"],
+                     "objectives_met": ["1.1", "2.1", "2.2"]}
+    app_mod.store.save(s)
+
+    view = client.post("/api/restart").json()
+    assert view["module"] == 2 and view["display"] == [] and view["fresh"]
+    p = app_mod.store.load("acct-7")["progress"]
+    assert p["objectives_met"] == ["1.1"] and p["modules_done"] == [1]
+    assert p["mistakes_seen"] == ["sign"] and p["now_in"].startswith("2, restarted")
+    assert "2.1" not in app_mod.store.load("acct-7")["conversation"]["record"]
+
+
+def test_current_module_is_the_last_module_heading():
+    from tutor import current_module
+    assert current_module([]) is None
+    assert current_module([{"role": "student", "text": "## Module 3"},
+                           {"role": "tutor", "text": "## Module 1: A\n\n## Step"}]) == 1

@@ -5,7 +5,7 @@ from tutor import build_system_prompt
 
 # Pinned so a change to the prompt is always deliberate. Update it when you
 # change the instructions, topic.md, a teaching script or the module intros.
-VOICE_PROMPT_SHA256 = "2554811640ef30de3685e197cc8349a03c2ba1780b701161e31c65570b6410d8"  # 2026-10-29: staying on the subject; never ask for arithmetic, use calculate
+VOICE_PROMPT_SHA256 = "5ef8dc3f724e0dbd50d784484029fc59992acd430b945fb4983a240f9973870c"  # 2026-11-18: teach first; never ask for what you just said
 
 
 def test_voice_prompt_has_every_part_of_the_tutor():

@@ -138,6 +138,26 @@ def test_step_separator_ends_the_spoken_sentence(tmp_path, monkeypatch):
     assert kinds.index("say") < kinds.index(repr("That is right. Now find q."))
 
 
+def test_the_spreadsheet_goes_to_the_tutor_not_the_board(tmp_path):
+    tutor = Tutor(Store(tmp_path), client=FakeClient([(REPLY, [], "end_turn")]), voice=True)
+    s = student()
+
+    async def go():
+        return [e async for e in tutor.turn(s, "I get 12.79", sheet="B7: =NPV(B1,B2:B6)  → 12.79")]
+
+    asyncio.run(go())
+    conv = s["conversation"]
+    first = conv["messages"][0]["content"]
+    assert first.startswith("I get 12.79\n\n[The student's spreadsheet") and first.endswith("→ 12.79")
+    assert conv["display"][0] == {"role": "student", "text": "I get 12.79"}
+
+
+def test_with_sheet():
+    from sheet_note import with_sheet
+    assert with_sheet("hi", None) == "hi"
+    assert with_sheet("hi", "").endswith("(empty: the student cleared it)")
+
+
 def test_the_teacher_file_goes_into_the_prompt_before_the_voice_rules(monkeypatch, tmp_path):
     import tutor_config as cfg
     import shutil

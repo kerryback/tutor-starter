@@ -151,8 +151,12 @@ async def module_menu(tutor, student):
         turns.append(t)
         reply = t["tutor"].replace(intros.markdown(n), "")
         heard = " ".join(t["spoken"])
-        intro_heard = intros.MODULES[n]["spoken"] in heard
-        after = heard.replace(intros.MODULES[n]["spoken"], "")
+        # The voice says some words its own way (tutor.toml's [say]: CAPM is "cap-em").
+        import speech_text
+        import tutor_config
+        intro_said = speech_text._say_words(intros.MODULES[n]["spoken"], tutor_config.SAY)
+        intro_heard = intro_said in heard
+        after = heard.replace(intro_said, "")
         checks[f"module {n}: the fixed intro was shown and spoken"] = intros.markdown(n) in t["tutor"] and intro_heard
         checks[f"module {n}: the tutor starts a new section"] = re.search(r"^## ", reply, re.M) is not None
         checks[f"module {n}: the tutor says something after the intro"] = bool(after.strip())
@@ -188,18 +192,33 @@ def prose_and_board(text):
     return " ".join(prose), " ".join(board)
 
 
+# A number that is part of a calculation: it has a decimal point, a percent
+# sign or a dollar sign.  Bare whole numbers are counts, multipliers, names and
+# dates said in passing (voice.md), which need not be on the board.
+_CALC_NUM = re.compile(r"(\$)?(?<![\w.])(\d+(?:,\d{3})*(?:\.\d+)?)(\s*%)?")
+
+
 def numbers_on_board(turns):
-    """Every number in the spoken prose appears on the board, in this turn or an earlier one.
-    A plot's caption is on the board: the student reads it under the plot."""
-    board = ""
+    """Every number in a calculation that the tutor says appears on the board, in this
+    turn or an earlier one: a decimal, a percent or a dollar amount.  Exempt (voice.md):
+    bare whole numbers, numbers the student said, and one plus a rate on the board
+    (1.05 for 5%).  A plot's caption is on the board: the student reads it under the plot."""
+    board, said = "", ""
     for t in turns:
+        said += " " + str(t.get("student") or "")
         prose, b = prose_and_board(t["tutor"])
         board += " " + b + " " + json.dumps(t["trees"])
         board += " " + " ".join(p.get("caption", "") for p in t.get("plots", []))
         shown = {float(x.replace(",", "")) for x in _NUM.findall(board)}
+        shown |= {round(1 + x / 100, 10) for x in list(shown)}
+        shown |= {float(x.replace(",", "")) for x in _NUM.findall(said)}
         prose = _EXEMPT.sub(" ", prose)
-        if any(float(x.replace(",", "")) not in shown for x in _NUM.findall(prose)):
-            return False
+        for m in _CALC_NUM.finditer(prose):
+            dollar, num, pct = m.groups()
+            if not (dollar or pct or "." in num):
+                continue
+            if round(float(num.replace(",", "")), 10) not in shown:
+                return False
     return True
 
 

@@ -4,11 +4,13 @@ Goal: the student should be able to price an American option in a tree, say at
 which nodes exercise is optimal and why, and explain why an American call on a
 non-dividend-paying stock is worth the same as a European one.
 
+Teach it in this order. In each part, teach the idea and work the example
+yourself first, then give the student the practice example and wait.
+
 ## 1. One change to the recursion
 
-State the difference: an American option can be exercised at any date up to
-expiration, not just at expiration. Then ask what that does to the backward
-induction — the student can usually get there.
+Teach: an American option can be exercised at any date up to expiration, not
+just at expiration. That changes one line of the backward induction.
 
 At every node the holder chooses between two things they actually have:
 
@@ -20,9 +22,9 @@ Exercise value is `S − K` for a call and `K − S` for a put. The second term 
 what the option is worth if kept, computed exactly as before. Take the larger.
 That is the whole modification, applied at every node, working backward.
 
-Ask why the option is worth the max rather than something in between. (Because
-the holder chooses, and chooses after seeing where the stock went. An option is
-never worth less than what you can convert it into right now.)
+Say why the option is worth the max rather than something in between: the
+holder chooses, and chooses after seeing where the stock went. An option is
+never worth less than what you can convert it into right now.
 
 Also worth flagging: the closed-form sum from Module 3 is now useless, since it
 presumed we hold to expiration. American options have to be walked node by node.
@@ -31,10 +33,10 @@ This is why trees remain the standard tool for them.
 ## 2. Worked example — an American put
 
 Same running tree: S = 100, u = 1.1, d = 0.9, r = 2%, two periods, K = 100, so
-q = 0.6. Terminal payoffs: 0 at 121, 1 at 99, 19 at 81. Ask for those first.
+q = 0.6. Teach: terminal payoffs first: 0 at 121, 1 at 99, 19 at 81.
 
-Now walk backward, and at each node ask for both numbers before revealing
-either.
+Now walk backward, and at each node work both numbers, holding and exercising,
+before you compare them.
 
 Up node, stock at 110. Holding is worth `(0.6·0 + 0.4·1)/1.02 = 0.39`. Exercising
 pays `100 − 110 = −10`, i.e. nothing, since you would not exercise. Value 0.39.
@@ -71,10 +73,17 @@ python scripts/binomial.py --S 100 --K 100 --r 0.02 --u 1.1 --d 0.9 --n 2 \
 The `hold` and `exercise` columns in the full output are precisely the two
 numbers being compared at each node.
 
+Practice: an American put, S = 50, K = 55, u = 1.2, d = 0.9, r = 3% per
+period, two periods, so q = 0.4333. Draw it with `show_tree` and `hide`
+'all'. Ask for the terminal payoffs first (0, 1, 14.50), then each earlier
+node, holding and exercising at each. (Up node: hold 0.55, exercise pays nothing, value 0.55. Down node: hold 8.40,
+exercise 55 − 45 = 10, so exercise, value 10. Date 0: hold 5.73, exercise
+5, value 5.73. The European put is 4.85.)
+
 ## 3. Why would anyone exercise early?
 
-Ask before explaining. The student has just computed a node where exercising
-beats holding — ask them what they got by exercising and what they gave up.
+Teach: the student has just seen a node where exercising beats holding. Say
+what the holder got by exercising and what they gave up.
 
 Got: the strike, 100, in hand a period early, where it earns interest.
 Gave up: the chance that the stock falls further, and the protection of not
@@ -87,9 +96,8 @@ position plus a receivable. Higher interest rates make early exercise more
 attractive; more volatility makes it less attractive, because the abandoned
 optionality is worth more.
 
-Good check, and a trap worth letting them fall into: ask what happens at that
-node if r drops to 0. Most students recompute the continuation value and forget
-that q changes too. It becomes `q = (1 − 0.9)/0.2 = 0.5`, so holding is worth
+Work one more case at that node: r drops to 0. Most students recompute the
+continuation value and forget that q changes too, so say it. It becomes `q = (1 − 0.9)/0.2 = 0.5`, so holding is worth
 `0.5·1 + 0.5·19 = 10` — exactly what exercising pays. The advantage disappears.
 
 That is not a coincidence. With no interest and no dividends the American put is
@@ -103,9 +111,14 @@ python scripts/binomial.py --S 100 --K 100 --r 0.0 --u 1.1 --d 0.9 --n 2 \
 
 Both styles come to 5.25. Then put r back and watch the premium reappear.
 
+Practice: the practice put from part 2 (S = 50, K = 55, u = 1.2, d = 0.9),
+with r = 0. What is q, and what is holding worth at the down node? (q =
+0.3333; holding is worth 10.00, exactly what exercising pays.) Then: what is
+the American put worth today, and the European? (6.89, both.)
+
 ## 4. The American call result
 
-Set this up as a puzzle rather than a theorem. Run:
+Teach: show the result first, then the reason. Run:
 
 ```
 python scripts/binomial.py --S 50 --K 50 --r 0.01 --u 1.1 --n 3 \
@@ -114,10 +127,10 @@ python scripts/binomial.py --S 50 --K 50 --r 0.01 --u 1.1 --n 3 \
     --kind "European call" --brief
 ```
 
-Both give 4.29, and no node is ever marked for exercise. Ask why the extra right
-turned out to be worthless.
+Both give 4.29, and no node is ever marked for exercise. The extra right is
+worthless.
 
-The reasoning, which they should assemble rather than receive: exercising a call
+The reasoning: exercising a call
 early means paying K sooner than necessary, forfeiting the interest on it, and
 throwing away the protection against the stock falling below K. Both effects
 point the same way, so holding always weakly dominates. If you want out of the
@@ -133,9 +146,14 @@ make early exercise of a call optimal just before the ex-dividend date, because
 the stock price drops and the call holder does not receive the dividend. Mention
 it; do not develop it unless asked.
 
+Practice: the practice tree from part 2 (S = 50, u = 1.2, d = 0.9, r = 3%, two
+periods), an American call with strike 50. What is it worth, and is it ever
+exercised early? (5.75, the same as the European call; never.) Then ask them
+to say why in their own words.
+
 ## 5. Fill in the node
 
-Give them this and stop. Three values are missing and one of them is an early
+Practice: give them this and stop. Three values are missing and one of them is an early
 exercise node — do not hint at which.
 
 ```

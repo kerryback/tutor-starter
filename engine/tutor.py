@@ -17,6 +17,7 @@ from pathlib import Path
 import anthropic
 
 from speech_text import SpeechStream
+from sheet_note import with_sheet
 import intros
 import settings
 import tutor_config as cfg
@@ -39,8 +40,8 @@ TEACHER_HEAD = ("# The teacher's instructions\n\n"
 
 def build_system_prompt(voice=False):
     """The shared teaching protocol, the tutor's topic section, its teaching
-    scripts as references, the learning objectives, and (voice) the whiteboard
-    rules."""
+    scripts as references, the learning objectives, the teacher's instructions
+    (content/teacher.md, if any), and (voice) the whiteboard rules."""
     parts = [(cfg.INSTRUCTIONS / "teaching.md").read_text(encoding="utf-8"),
              (cfg.CONTENT / "topic.md").read_text(encoding="utf-8")]
     for name in cfg.REFERENCES:
@@ -48,8 +49,8 @@ def build_system_prompt(voice=False):
         parts.append(f"<reference file=\"{name}\">\n{text}\n</reference>")
     parts.append(intros.prompt_text())
     teacher = cfg.CONTENT / "teacher.md"
-    if teacher.exists() and teacher.read_text().strip():
-        parts.append(TEACHER_HEAD + teacher.read_text().strip())
+    if teacher.exists() and teacher.read_text(encoding="utf-8").strip():
+        parts.append(TEACHER_HEAD + teacher.read_text(encoding="utf-8").strip())
     if voice:
         parts.append((cfg.INSTRUCTIONS / "voice.md").read_text(encoding="utf-8"))
     return "\n\n".join(parts)
@@ -126,6 +127,17 @@ class Store:
         tmp.replace(p)
 
 
+def current_module(display):
+    """The module the student is in: the last "## Module <n>" heading the tutor
+    wrote on the board (a module intro starts with one), or None."""
+    n = None
+    for d in display:
+        if d.get("role") == "tutor":
+            for m in re.finditer(r"^## Module (\d+)\b", d.get("text", ""), re.M):
+                n = int(m.group(1))
+    return n
+
+
 def new_conversation(student, voice=False):
     # The record is frozen into the conversation when it starts, so the system
     # prompt never changes mid-conversation (that would break the prompt cache
@@ -154,6 +166,24 @@ class Tutor:
             student["conversation"].setdefault("spoken", [])
         return student["conversation"]
 
+    def restart_module(self, student):
+        """The student pressed Restart: start the module they are in over, on a
+        clean board. Clears that module's objectives and its done mark, then
+        starts a new conversation. Returns the module's number, or None when
+        the student is not in a module yet. The caller then runs module_turn."""
+        display = (student.get("conversation") or {}).get("display") or []
+        n = current_module(display)
+        if n not in intros.MODULES:
+            return None
+        p = student.get("progress")
+        if p:
+            p["objectives_met"] = [o for o in p.get("objectives_met") or []
+                                   if not str(o).startswith(f"{n}.")]
+            p["modules_done"] = [m for m in p.get("modules_done") or [] if m != n]
+            p["now_in"] = f"{n}, restarted from the beginning"
+        self.ensure_conversation(student, fresh=True)
+        return n
+
     def _say(self, conv, sentences):
         events = []
         for sentence in sentences:
@@ -168,7 +198,7 @@ class Tutor:
         conv["display"].append({"role": "tutor", "text": md, "intro": True})
         events = [{"type": "break"}, {"type": "text", "text": md}, {"type": "break"}]
         if self.voice:
-            speech = SpeechStream()
+            speech = SpeechStream(cfg.SAY)
             events += self._say(conv, speech.feed(md) + speech.flush())
         return events
 
@@ -187,7 +217,7 @@ class Tutor:
         conv["display"].append({"role": "tutor", "text": md, "intro": True})
         for e in [{"type": "break"}, {"type": "text", "text": md}, {"type": "break"}]:
             yield e
-        speech = SpeechStream()
+        speech = SpeechStream(cfg.SAY)
         for e in self._say(conv, speech.feed(md) + speech.flush()):
             yield e
         note = SESSION_START[:-1] + " " + intros.COURSE_NOTE + "]"
@@ -210,7 +240,7 @@ class Tutor:
         async for e in self.turn(student, note, hidden=True):
             yield e
 
-    async def turn(self, student, user_text, hidden=False):
+    async def turn(self, student, user_text, hidden=False, sheet=None):
         """Run one student message through the tool loop.
 
         Yields browser events: {'type': 'text', 'text': delta},
@@ -220,15 +250,17 @@ class Tutor:
         With voice on, also {'type': 'say', 'n': i}, where i indexes
         conv['spoken'].
         Saves the student when done, including on error.
+        sheet: the student's spreadsheet as text, if it changed since their
+        last message; the tutor reads it, the board does not show it.
         """
         conv = self.ensure_conversation(student)
         msgs = conv["messages"]
-        msgs.append({"role": "user", "content": user_text})
+        msgs.append({"role": "user", "content": with_sheet(user_text, sheet)})
         if not hidden:
             conv["display"].append({"role": "student", "text": user_text})
         state = {"trees": conv["trees"], "progress": student.get("progress")}
         buf = []
-        speech = SpeechStream() if self.voice else None
+        speech = SpeechStream(cfg.SAY) if self.voice else None
 
         def say(sentences):
             return self._say(conv, sentences)

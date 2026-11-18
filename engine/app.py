@@ -32,6 +32,7 @@ import tutor_config as cfg  # noqa: E402
 from auth import SessionCheck, home_fetcher  # noqa: E402
 import session_cookie as sc  # noqa: E402
 import intros  # noqa: E402
+from sheet_note import MAX_SHEET  # noqa: E402
 import teacher_notes  # noqa: E402
 from tutor import SESSION_START, Store, Tutor, student_slug  # noqa: E402
 
@@ -74,6 +75,7 @@ class Chat(BaseModel):
     message: str = ""
     start: bool = False
     module: int | None = None   # the student picked this module from the menu
+    sheet: str | None = None    # the spreadsheet, if it changed since the last message (sheet_note.py)
 
 
 async def _student(request: Request):
@@ -130,6 +132,24 @@ async def new_session(request: Request):
     return await _open(await _student(request), fresh=True)
 
 
+@app.post("/api/restart")
+async def restart(request: Request):
+    """Restart the module the student is in: clear its progress, start a new
+    conversation, and return the view with the module's number. The page then
+    asks for that module (POST /api/chat with module), which plays its intro."""
+    who = await _student(request)
+    lock = store.lock(store.load(who.key)["slug"])
+    if lock.locked():
+        raise HTTPException(409, "The tutor is still answering your last message.")
+    async with lock:
+        student = store.load(who.key, who.username)
+        n = tutor.restart_module(student)
+        if n is None:
+            raise HTTPException(400, "You are not in a module yet. Pick one from the menu.")
+        store.save(student)
+        return {**_view(student), "module": n}
+
+
 @app.post("/api/chat")
 async def chat(req: Chat, request: Request):
     who = await _student(request)
@@ -137,6 +157,8 @@ async def chat(req: Chat, request: Request):
         raise HTTPException(400, "Empty message.")
     if len(req.message) > 8000:
         raise HTTPException(400, "Message too long.")
+    if req.sheet is not None and len(req.sheet) > MAX_SHEET:
+        raise HTTPException(400, "The spreadsheet is too large to send.")
     lock = store.lock(store.load(who.key)["slug"])
     if lock.locked():
         raise HTTPException(409, "The tutor is still answering your last message.")
@@ -156,7 +178,7 @@ async def chat(req: Chat, request: Request):
                 elif req.start:
                     run = tutor.start_turn(s)
                 else:
-                    run = tutor.turn(s, text)
+                    run = tutor.turn(s, text, sheet=req.sheet)
                 async for ev in run:
                     yield _sse(ev)
             finally:

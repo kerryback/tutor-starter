@@ -20,8 +20,14 @@ spoken, and neither is a sentence with "=" that is left with two words or fewer
 
 Decimals are written out the way the tutor should say them, because the speech
 engine reads "9.44" as "nine, forty-four": 9.44 is "nine point forty-four",
-0.6 is "zero point six", 1.02 is "one point oh two", and $5.88 is "five point
-eighty-eight dollars"."""
+0.6 is "zero point six", 1.02 is "one point oh two".  Dollar amounts are said
+in dollars and cents: $50.00 and $50 are "fifty dollars", $5.88 is "five
+dollars and eighty-eight cents", $0.41 is "forty-one cents", and $1.5 million
+is "one point five million dollars".
+
+A tutor's tutor.toml can name words the voice should say another way, in a
+[say] table ("CAPM" = "cap-em"): each whole word is replaced in speech only;
+the board keeps the written form."""
 
 import re
 
@@ -99,7 +105,35 @@ def decimal_words(whole: str, frac: str) -> str:
 _DECIMAL = re.compile(r"(?<![\w.])(-)?(\$)?(\d{1,3}(?:,\d{3})+|\d+)\.(\d+)(?![\w.]*\d)")
 
 
+_SCALE = r"(?:thousand|million|billion|trillion)"
+# $5, $1,050, $5.88, $50.00, and $1.5 million.
+_DOLLARS = re.compile(rf"(?<![\w.])([-−])?\$(\d{{1,3}}(?:,\d{{3}})+|\d+)(?:\.(\d+))?(?![\w.]*\d)(\s+{_SCALE}\b)?")
+
+
+def dollar_words(whole, frac=None, scale=None):
+    """("50", "00") -> "fifty dollars"; ("5", "88") -> "five dollars and eighty-eight
+    cents"; ("0", "41") -> "forty-one cents"; ("1", "5", " million") -> "one point five
+    million dollars"."""
+    n = int(whole.replace(",", ""))
+    if scale:
+        amount = decimal_words(whole, frac) if frac and frac.strip("0") else number_words(n)
+        return f"{amount} {scale.strip()} dollars"
+    if frac and len(frac) > 2:                       # not a price in cents: read it as a decimal
+        return decimal_words(whole, frac[:6]) + " dollars"
+    cents = int((frac or "0").ljust(2, "0")) if frac else 0
+    d = f"{number_words(n)} dollar{'' if n == 1 else 's'}"
+    c = f"{number_words(cents)} cent{'' if cents == 1 else 's'}"
+    if not cents:
+        return d
+    return c if n == 0 else f"{d} and {c}"
+
+
 def _say_decimals(s):
+    def money(m):
+        minus, whole, frac, scale = m.groups()
+        return ("minus " if minus else "") + dollar_words(whole, frac, scale)
+    s = _DOLLARS.sub(money, s)
+
     def one(m):
         minus, dollar, whole, frac = m.groups()
         words = decimal_words(whole, frac[:6])
@@ -107,8 +141,15 @@ def _say_decimals(s):
     return _DECIMAL.sub(one, s)
 
 
-def spoken_form(prose: str) -> str:
-    """Return the text as it should be spoken, or "" if nothing is speakable."""
+def _say_words(s, say):
+    for word, spoken in (say or {}).items():
+        s = re.sub(rf"(?<![\w-]){re.escape(word)}(?![\w-])", spoken, s)
+    return s
+
+
+def spoken_form(prose: str, say=None) -> str:
+    """Return the text as it should be spoken, or "" if nothing is speakable.
+    say maps written words to how the voice says them (tutor.toml's [say])."""
     s = re.sub(r"\$\$.*?\$\$", " ", prose, flags=re.S)
     s = re.sub(r"`[^`]*`", " ", s)
     s = re.sub(r"\$(?![\d\s])[^$]*\$", " ", s)       # inline math; "$5" is currency
@@ -116,6 +157,7 @@ def spoken_form(prose: str) -> str:
     s = re.sub(r"^[\s>]*(?:[-*+]\s+|\d+[.)]\s+)?", "", s)
     s = re.sub(r"\*\*|__", "", s)                     # bold markers
     s = _ITALIC.sub(r"\2", s)                         # italic markers, so "*q*" is not "q times"
+    s = re.sub(r"(?<![\w)$])[−-]\$(?=\d)", "minus $", s)   # −$1.58: a negative amount, not a formula
     s = _say_simple_eq(s)
     s = _FORMULA.sub(" ", s)
     s = re.sub(r"[*_#]", "", s)
@@ -126,11 +168,13 @@ def spoken_form(prose: str) -> str:
         return ""                                     # a formula line ("Find: σ = ?"): the board shows it
     s = _say_decimals(s)
     s = re.sub(r"\s*%", " percent", s)
+    s = _say_words(s, say)
     return s if re.search(r"[A-Za-z0-9]", s) else ""
 
 
 class SpeechStream:
-    def __init__(self):
+    def __init__(self, say=None):
+        self.say = say or {}     # tutor.toml's [say]: written word -> spoken form
         self.buf = ""            # text not yet read
         self.pending = ""        # prose of the sentence in progress
         self.skip = None         # "$$" or "```" while inside a skipped block
@@ -270,8 +314,7 @@ class SpeechStream:
         self._emit(self.pending, out)
         self.pending = ""
 
-    @staticmethod
-    def _emit(sentence, out):
-        s = spoken_form(sentence)
+    def _emit(self, sentence, out):
+        s = spoken_form(sentence, self.say)
         if s:
             out.append(s)
